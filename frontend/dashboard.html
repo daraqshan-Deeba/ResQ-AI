@@ -1,0 +1,279 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ResQ AI — Dashboard</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div class="dash-body">
+
+    <!-- SIDEBAR -->
+    <aside class="sidebar">
+      <a href="index.html" class="brand"><span class="brand-icon">📡</span>ResQ<span style="color:var(--accent)">AI</span></a>
+      <nav>
+        <a href="#" class="nav-item active" data-page="overview">🏠 Dashboard</a>
+        <a href="#" class="nav-item" data-page="assessment">📋 Emergency Assessment</a>
+        <a href="#" class="nav-item" data-page="assistant">🤖 AI Assistant</a>
+        <a href="#" class="nav-item" data-page="hospitals">➕ Nearby Hospitals</a>
+        <a href="#" class="nav-item" data-page="shelters">🏘️ Nearby Shelters</a>
+        <a href="#" class="nav-item" data-page="reports">👥 Community Reports</a>
+        <a href="#" class="nav-item" data-page="sos">🚨 SOS <span class="sos-dot"></span></a>
+      </nav>
+      <div class="sidebar-bottom">
+        <a href="#" class="nav-item" data-page="profile">👤 Profile</a>
+        <a href="#" class="nav-item" data-page="settings">⚙️ Settings</a>
+      </div>
+    </aside>
+
+    <!-- MAIN -->
+    <div class="dash-main">
+      <div class="topbar">
+        <div>
+          <h1 id="topbarTitle">Emergency Overview</h1>
+          <div class="region">Hyderabad, Telangana</div>
+        </div>
+        <div style="display:flex;align-items:center;gap:12px;">
+          <span class="badge watch" id="topbarStatusBadge">WATCH</span>
+          <div style="width:36px;height:36px;border-radius:50%;background:linear-gradient(to bottom right,var(--primary),var(--accent));"></div>
+        </div>
+      </div>
+
+      <div class="dash-content">
+
+        <!-- ===== OVERVIEW PAGE ===== -->
+        <div class="page" id="page-overview">
+          <div class="grid-3">
+            <div class="glass-card card">
+              <div class="card-row">
+                <div><div class="mono-tag">Emergency Status</div><h3 style="font-size:24px;margin-top:8px;" id="statusLevelText">WATCH</h3></div>
+                <div class="card-icon" id="statusIcon" style="background:rgba(245,158,11,.15);color:#fbbf24;">🛡️</div>
+              </div>
+              <div class="card-row" style="margin-top:20px;align-items:center;">
+                <span class="badge watch" id="reportsCountBadge">6 active reports</span>
+                <span class="mono-tag" id="statusUpdatedAt">Updated 2 min ago</span>
+              </div>
+            </div>
+
+            <div class="glass-card card">
+              <div class="card-row">
+                <div><div class="mono-tag">Weather</div><h3 style="font-size:24px;margin-top:8px;" id="weatherCondition">Heavy Rain</h3><div style="color:var(--muted);font-size:14px;" id="weatherTemp">26°C</div></div>
+                <div class="card-icon" style="background:rgba(6,182,212,.15);color:var(--accent-soft);">🌧️</div>
+              </div>
+              <div class="weather-bars">
+                <div class="weather-bar-col"><div class="weather-bar-track"><div class="weather-bar-fill" style="height:80%;"></div></div><span class="mono-tag">Today</span></div>
+                <div class="weather-bar-col"><div class="weather-bar-track"><div class="weather-bar-fill" style="height:100%;"></div></div><span class="mono-tag">Tue</span></div>
+                <div class="weather-bar-col"><div class="weather-bar-track"><div class="weather-bar-fill" style="height:53%;"></div></div><span class="mono-tag">Wed</span></div>
+                <div class="weather-bar-col"><div class="weather-bar-track"><div class="weather-bar-fill" style="height:20%;"></div></div><span class="mono-tag">Thu</span></div>
+              </div>
+              <p class="mono-tag" style="margin-top:10px;text-transform:none;">4-day bars are illustrative — the backend's free-tier call only returns current conditions.</p>
+            </div>
+
+            <div class="glass-card card">
+              <div class="card-row"><div class="mono-tag">Risk Score</div><span style="color:var(--danger-soft);font-size:12px;" id="riskTrendLabel">📈 rising</span></div>
+              <div class="risk-gauge">
+                <div style="position:relative;width:96px;height:96px;flex-shrink:0;">
+                  <svg width="96" height="96" style="transform:rotate(-90deg)">
+                    <circle cx="48" cy="48" r="40" stroke-width="8" fill="transparent" style="stroke:rgba(255,255,255,.05)"/>
+                    <circle id="riskGaugeCircle" cx="48" cy="48" r="40" stroke-width="8" fill="transparent" stroke-linecap="round"
+                      style="stroke:var(--danger);stroke-dasharray:251;stroke-dashoffset:80;transition:stroke-dashoffset .6s ease;"/>
+                  </svg>
+                  <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:20px;font-weight:600;" id="riskScoreValue">68</div>
+                </div>
+                <div style="flex:1;">
+                  <div class="risk-factor"><div style="display:flex;justify-content:space-between;font-size:12px;color:var(--muted);"><span>Rainfall intensity</span><span id="rainfallPct">82%</span></div><div class="risk-factor-bar"><div class="risk-factor-fill" id="rainfallBar" style="width:82%;"></div></div></div>
+                  <div class="risk-factor"><div style="display:flex;justify-content:space-between;font-size:12px;color:var(--muted);"><span>Drainage capacity</span><span id="drainagePct">54%</span></div><div class="risk-factor-bar"><div class="risk-factor-fill" id="drainageBar" style="width:54%;"></div></div></div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="grid-3" style="grid-template-columns:2fr 1fr;margin-top:20px;">
+            <div class="glass-card card">
+              <div class="card-row"><div class="mono-tag">Live Map Preview</div></div>
+              <div class="map-preview">
+                <div class="map-center-pulse"><div class="map-center-ring"></div><div class="map-center-dot"></div></div>
+                <div class="map-pin" style="top:20%;left:15%;">📍 Gandhi Hospital</div>
+                <div class="map-pin" style="top:38%;left:70%;">📍 Osmania Hospital</div>
+                <div class="map-pin" style="top:56%;left:15%;">📍 Nallakunta Hall</div>
+              </div>
+              <p style="font-size:12px;color:var(--muted);margin-top:12px;">Full interactive map with routing lands in Module 5.</p>
+            </div>
+            <div class="glass-card card">
+              <div class="mono-tag" style="margin-bottom:16px;">Quick Actions</div>
+              <div class="quick-actions">
+                <a href="#" class="quick-action" data-page="assessment"><span class="feature-icon">📋</span>New Assessment</a>
+                <a href="#" class="quick-action" data-page="hospitals"><span class="feature-icon">➕</span>Find Hospital</a>
+                <a href="#" class="quick-action" data-page="shelters"><span class="feature-icon">🏘️</span>Find Shelter</a>
+                <a href="#" class="quick-action" data-page="reports"><span class="feature-icon">👥</span>Report Issue</a>
+              </div>
+            </div>
+          </div>
+
+          <div class="grid-3" style="grid-template-columns:2fr 1fr;margin-top:20px;">
+            <div class="glass-card card">
+              <div class="card-row"><div class="mono-tag">Recent Alerts</div><span class="mono-tag">4 today</span></div>
+              <div style="margin-top:20px;">
+                <div class="alert-item"><div class="alert-title-row"><p style="margin:0;font-size:14px;">Flash flood warning issued for Musi riverbank</p><span class="badge critical">critical</span></div><span class="mono-tag">10:42 AM</span></div>
+                <div class="alert-item"><div class="alert-title-row"><p style="margin:0;font-size:14px;">Waterlogging reported near Tarnaka underpass</p><span class="badge warning">warning</span></div><span class="mono-tag">10:15 AM</span></div>
+                <div class="alert-item"><div class="alert-title-row"><p style="margin:0;font-size:14px;">Shelter capacity updated: Nallakunta community hall</p><span class="badge info">info</span></div><span class="mono-tag">9:50 AM</span></div>
+                <div class="alert-item"><div class="alert-title-row"><p style="margin:0;font-size:14px;">Road closure: LB Nagar flyover, both lanes</p><span class="badge warning">warning</span></div><span class="mono-tag">9:20 AM</span></div>
+              </div>
+            </div>
+            <div class="glass-card card" style="height:420px;">
+              <div id="chatWidgetMount" style="height:100%;"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ===== ASSESSMENT PAGE ===== -->
+        <div class="page" id="page-assessment" style="display:none;">
+
+          <div class="assess-topline">
+            <div style="display:flex;align-items:center;gap:10px;">
+              <span class="badge safe" style="gap:6px;"><span class="dot-accent" style="width:6px;height:6px;"></span> AI Link Active</span>
+            </div>
+            <div style="display:flex;align-items:center;gap:10px;">
+              <select class="lang-select" id="assessLang">
+                <option value="English">English</option>
+                <option value="Telugu">తెలుగు</option>
+                <option value="Hindi">हिन्दी</option>
+              </select>
+              <button class="icon-btn" title="Settings" data-page="settings">⚙️</button>
+            </div>
+          </div>
+
+          <div class="glass-card alert-banner">
+            <div class="alert-banner-row">
+              <span class="badge critical">IMD Red Alert</span>
+              <span class="mono-tag">26°C 🌧️</span>
+            </div>
+            <p style="margin:8px 0 0;font-size:14px;">Severe rainfall &amp; flash flooding warnings active for the next 6 hours in your area.</p>
+          </div>
+
+          <div class="mono-tag" style="margin:24px 0 12px;">Quick emergency presets</div>
+          <div class="preset-grid">
+            <button class="glass-card preset-btn" data-preset="flooding"><span class="feature-icon">🌊</span>House Flooding</button>
+            <button class="glass-card preset-btn" data-preset="electrocution"><span class="feature-icon">⚡</span>Electrocution</button>
+            <button class="glass-card preset-btn" data-preset="injury"><span class="feature-icon">🤕</span>Injury / Slip</button>
+            <button class="glass-card preset-btn" data-preset="snakebite"><span class="feature-icon">🐍</span>Snake Bite</button>
+          </div>
+
+          <div class="mono-tag" style="margin:24px 0 12px;">Describe what's happening</div>
+          <div class="glass-card describe-box">
+            <textarea id="assessInput" placeholder="e.g. My car is stalled in deep water and doors won't open…"></textarea>
+            <button class="mic-btn" id="assessMic" title="Voice input">🎙️</button>
+          </div>
+
+          <button class="btn btn-primary" style="margin-top:20px;" id="assessSubmit">🚨 Get Help Now</button>
+
+          <div class="glass-card card" style="margin-top:24px;" id="assessResult">
+            <div class="mono-tag">Standing by</div>
+            <h3 style="font-size:18px;margin-top:8px;">Waiting for your report</h3>
+            <p style="color:var(--muted);font-size:14px;margin-top:8px;">Pick a preset above or describe your situation. Once the risk-assessment agent (Module 4) is connected, this panel will show a live severity score, first-aid steps, and the nearest safe route.</p>
+          </div>
+        </div>
+
+        <!-- ===== ASSISTANT PAGE ===== -->
+        <div class="page" id="page-assistant" style="display:none;">
+          <div class="mono-tag">AI Assistant</div>
+          <h1 style="font-size:24px;margin:8px 0 24px;">Talk to Responder</h1>
+          <div class="glass-card card" style="max-width:600px;height:60vh;">
+            <div id="chatWidgetMount2" style="height:100%;"></div>
+          </div>
+        </div>
+
+        <!-- ===== HOSPITALS PAGE ===== -->
+        <div class="page list-page" id="page-hospitals" style="display:none;">
+          <div class="mono-tag">Nearby Hospitals</div>
+          <h1>Hospitals near you</h1>
+          <p class="mono-tag" style="text-transform:none;margin-bottom:16px;">Names/locations are live from Google Places. Bed counts aren't available from any public API — ask on arrival or check with the shelter/hospital directly.</p>
+          <div class="grid-3" id="hospitalsList">
+            <div class="glass-card list-item"><span class="feature-icon" style="background:rgba(239,68,68,.15);color:var(--danger-soft);">➕</span><h3 style="font-size:16px;margin-top:12px;">Gandhi Hospital</h3><div class="mono-tag" style="margin-top:8px;">📍 2.1 km away</div></div>
+            <div class="glass-card list-item"><span class="feature-icon" style="background:rgba(239,68,68,.15);color:var(--danger-soft);">➕</span><h3 style="font-size:16px;margin-top:12px;">Osmania General Hospital</h3><div class="mono-tag" style="margin-top:8px;">📍 3.4 km away</div></div>
+            <div class="glass-card list-item"><span class="feature-icon" style="background:rgba(239,68,68,.15);color:var(--danger-soft);">➕</span><h3 style="font-size:16px;margin-top:12px;">Apollo Hospitals Jubilee Hills</h3><div class="mono-tag" style="margin-top:8px;">📍 5.8 km away</div></div>
+          </div>
+          <p style="font-size:12px;color:var(--muted);margin-top:24px;" id="hospitalsStatus">Showing sample data — connect the backend to load live results.</p>
+        </div>
+
+        <!-- ===== SHELTERS PAGE ===== -->
+        <div class="page list-page" id="page-shelters" style="display:none;">
+          <div class="mono-tag">Nearby Shelters</div>
+          <h1>Shelter capacity right now</h1>
+          <p class="mono-tag" style="text-transform:none;margin-bottom:16px;">This list is manually maintained (no public API tracks live shelter occupancy) — treat numbers as best-known, not real-time.</p>
+          <div class="grid-3" id="sheltersList">
+            <div class="glass-card list-item"><span class="feature-icon" style="background:rgba(6,182,212,.15);color:var(--accent-soft);">🏘️</span><h3 style="font-size:16px;margin-top:12px;">Nallakunta Community Hall</h3><div style="font-size:14px;margin-top:10px;">64 / 120 occupied</div><div class="risk-factor-bar" style="margin-top:8px;"><div class="risk-factor-fill" style="width:53%;background:linear-gradient(90deg,var(--accent),var(--primary));"></div></div></div>
+            <div class="glass-card list-item"><span class="feature-icon" style="background:rgba(6,182,212,.15);color:var(--accent-soft);">🏘️</span><h3 style="font-size:16px;margin-top:12px;">Govt High School, Adikmet</h3><div style="font-size:14px;margin-top:10px;">180 / 200 occupied</div><div class="risk-factor-bar" style="margin-top:8px;"><div class="risk-factor-fill" style="width:90%;background:linear-gradient(90deg,var(--accent),var(--primary));"></div></div></div>
+            <div class="glass-card list-item"><span class="feature-icon" style="background:rgba(6,182,212,.15);color:var(--accent-soft);">🏘️</span><h3 style="font-size:16px;margin-top:12px;">Kavadiguda Function Hall</h3><div style="font-size:14px;margin-top:10px;">12 / 80 occupied</div><div class="risk-factor-bar" style="margin-top:8px;"><div class="risk-factor-fill" style="width:15%;background:linear-gradient(90deg,var(--accent),var(--primary));"></div></div></div>
+          </div>
+          <p style="font-size:12px;color:var(--muted);margin-top:24px;" id="sheltersStatus">Showing sample data — connect the backend to load live results.</p>
+        </div>
+
+        <!-- ===== REPORTS PAGE ===== -->
+        <div class="page list-page" id="page-reports" style="display:none;">
+          <div class="mono-tag">Community Reports</div>
+          <h1>Ground reports from your area</h1>
+
+          <div class="glass-card card" style="margin-bottom:24px;max-width:520px;">
+            <div class="mono-tag" style="margin-bottom:12px;">Submit a report</div>
+            <input type="text" id="reportArea" placeholder="Area (e.g. Tarnaka)" style="width:100%;margin-bottom:10px;background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:10px 12px;color:#e2e8f0;font-family:inherit;font-size:14px;" />
+            <textarea id="reportMessage" placeholder="What's happening here?" style="width:100%;min-height:70px;background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:10px 12px;color:#e2e8f0;font-family:inherit;font-size:14px;"></textarea>
+            <button class="btn btn-primary" id="reportSubmit" style="margin-top:12px;padding:10px 18px;font-size:14px;">Submit report</button>
+          </div>
+
+          <div id="reportsList">
+            <div class="glass-card list-item" style="display:flex;gap:16px;margin-bottom:16px;"><span class="feature-icon" style="margin-bottom:0;">👥</span><div><div style="display:flex;gap:8px;align-items:center;"><b>Tarnaka</b><span style="color:var(--accent-soft);font-size:12px;">✅ Verified</span></div><p style="font-size:14px;margin:4px 0;">Underpass fully submerged, avoid.</p><span class="mono-tag">12 min ago</span></div></div>
+            <div class="glass-card list-item" style="display:flex;gap:16px;margin-bottom:16px;"><span class="feature-icon" style="margin-bottom:0;">👥</span><div><div style="display:flex;gap:8px;align-items:center;"><b>LB Nagar</b><span style="color:var(--accent-soft);font-size:12px;">✅ Verified</span></div><p style="font-size:14px;margin:4px 0;">Flyover traffic stopped, police on site.</p><span class="mono-tag">34 min ago</span></div></div>
+            <div class="glass-card list-item" style="display:flex;gap:16px;"><span class="feature-icon" style="margin-bottom:0;">👥</span><div><b>Nallakunta</b><p style="font-size:14px;margin:4px 0;">Shelter is taking in families, food available.</p><span class="mono-tag">51 min ago</span></div></div>
+          </div>
+          <p style="font-size:12px;color:var(--muted);margin-top:24px;" id="reportsStatus">Showing sample data — connect the backend to load live results.</p>
+        </div>
+
+        <!-- ===== SOS PAGE ===== -->
+        <div class="page" id="page-sos" style="display:none;">
+          <div class="glass-card centered-card">
+            <div style="position:relative;width:80px;height:80px;display:flex;align-items:center;justify-content:center;">
+              <div class="pulse-ring" style="border-color:rgba(239,68,68,.5);"></div>
+              <div style="width:64px;height:64px;border-radius:50%;background:var(--danger);display:flex;align-items:center;justify-content:center;font-size:28px;box-shadow:0 0 40px rgba(239,68,68,.3);">🚨</div>
+            </div>
+            <h1 style="font-size:24px;">Send an SOS</h1>
+            <p style="color:var(--muted);font-size:14px;">Pressing this shares your live location with responders via SMS.</p>
+            <button class="btn btn-danger" id="sosConfirmBtn">Confirm SOS</button>
+            <p style="font-size:13px;color:var(--muted);" id="sosStatus"></p>
+          </div>
+        </div>
+
+        <!-- ===== PROFILE PAGE ===== -->
+        <div class="page" id="page-profile" style="display:none;">
+          <div class="glass-card centered-card">
+            <span class="feature-icon" style="width:56px;height:56px;font-size:24px;">👤</span>
+            <h1 style="font-size:24px;">Profile</h1>
+            <p style="color:var(--muted);font-size:14px;">Account details and saved locations connect once auth lands in Module 7.</p>
+          </div>
+        </div>
+
+        <!-- ===== SETTINGS PAGE ===== -->
+        <div class="page" id="page-settings" style="display:none;">
+          <div class="glass-card centered-card">
+            <span class="feature-icon" style="width:56px;height:56px;font-size:24px;">⚙️</span>
+            <h1 style="font-size:24px;">Settings</h1>
+            <p style="color:var(--muted);font-size:14px;">Enable push alerts to receive SOS and emergency notifications on this device — free, via Firebase Cloud Messaging.</p>
+            <button class="btn btn-primary" id="enableAlertsBtn" style="margin-top:16px;">🔔 Enable Push Alerts</button>
+            <p style="font-size:13px;color:var(--muted);margin-top:12px;" id="alertsStatus"></p>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <a href="#" class="floating-sos" data-page="sos"><span class="ping-dot"></span> 🚨 SOS</a>
+
+  <!-- Firebase (Cloud Messaging push alerts) — see firebase-config.js -->
+  <script src="https://www.gstatic.com/firebasejs/10.13.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.13.1/firebase-messaging-compat.js"></script>
+  <script src="firebase-config.js"></script>
+  <script src="script.js"></script>
+</body>
+</html>

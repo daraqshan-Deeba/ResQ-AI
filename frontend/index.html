@@ -1,0 +1,181 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ResQ AI — Monsoon Emergency Response Agent</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+
+  <!-- NAVBAR -->
+  <header class="navbar">
+    <nav class="glass-card navbar-inner">
+      <a href="#home" class="brand">
+        <span class="brand-icon">📡</span>
+        ResQ<span style="color:var(--accent)">AI</span>
+      </a>
+      <div class="nav-links">
+        <a href="#home">Home</a>
+        <a href="#features">Features</a>
+        <a href="#agents">AI Agents</a>
+        <a href="#how-it-works">How it works</a>
+        <a href="dashboard.html?page=overview" class="nav-dashboard">🛡️ Dashboard</a>
+      </div>
+      <a href="dashboard.html?page=assessment" class="nav-cta btn btn-primary" style="padding:8px 16px;font-size:14px;">🚨 Report Emergency</a>
+      <button class="nav-toggle" id="navToggle">☰</button>
+    </nav>
+    <div class="glass-card mobile-menu" id="mobileMenu">
+      <a href="#home">Home</a>
+      <a href="#features">Features</a>
+      <a href="#agents">AI Agents</a>
+      <a href="#how-it-works">How it works</a>
+      <a href="dashboard.html?page=overview" class="nav-dashboard">🛡️ Dashboard</a>
+      <a href="dashboard.html?page=assessment" class="btn btn-primary" style="margin-top:8px;text-align:center;">🚨 Report Emergency</a>
+    </div>
+  </header>
+
+  <!-- HERO -->
+  <section class="hero" id="home">
+    <div class="hero-bg-glow"></div>
+    <div class="rain" id="rain"></div>
+    <div class="flood-rise"></div>
+
+    <div class="radar">
+      <div class="radar-ring r1"></div>
+      <div class="radar-ring r2"></div>
+      <div class="radar-ring r3"></div>
+      <div class="pulse-ring"></div>
+      <div class="pulse-ring delay"></div>
+      <div class="radar-sweep"><div class="radar-beam"></div></div>
+      <div class="radar-dot"></div>
+    </div>
+
+    <div class="section" style="padding:0;position:relative;z-index:2;">
+      <div class="badge-pill">
+        <span class="dot-danger"></span>
+        <span class="mono-tag">Live monsoon monitoring · Hyderabad region</span>
+      </div>
+
+      <h1>When the water rises,<br><span class="text-gradient">ResQ AI</span> tells you where to go.</h1>
+
+      <p class="lead">A coordinated network of AI agents that reads live weather, flags risk in real time, and routes people to the nearest open shelter — before the situation becomes a crisis.</p>
+
+      <div class="hero-actions">
+        <a href="dashboard.html?page=assessment" class="btn btn-primary">Start Emergency Assessment →</a>
+        <a href="dashboard.html?page=overview" class="btn btn-outline">🛡️ View Live Dashboard</a>
+      </div>
+
+      <div class="hero-stats">
+        <div><div class="value">24/7</div><div class="label">Risk monitoring</div></div>
+        <div><div class="value">&lt;60s</div><div class="label">Alert dispatch time</div></div>
+        <div><div class="value">3</div><div class="label">AI agents on call</div></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- FEATURES -->
+  <section class="section" id="features">
+    <div class="section-head">
+      <div class="mono-tag">What it does</div>
+      <h2>Built for the moments that matter</h2>
+      <p>Every feature exists to shorten the gap between a rising risk and a safe decision.</p>
+    </div>
+    <div class="grid-3">
+      <div class="glass-card feature-card"><div class="feature-icon">📊</div><h3>Real-time risk scoring</h3><p>Combines rainfall, drainage, and river-level data into a single, constantly updated risk score for your area.</p></div>
+      <div class="glass-card feature-card"><div class="feature-icon">🌧️</div><h3>Live weather intelligence</h3><p>Hyperlocal forecasts and rainfall trends, refreshed continuously through the monsoon window.</p></div>
+      <div class="glass-card feature-card"><div class="feature-icon">📍</div><h3>Shelter & hospital routing</h3><p>Finds the nearest open shelter or hospital with capacity, and routes you there avoiding flooded roads.</p></div>
+      <div class="glass-card feature-card"><div class="feature-icon">🚨</div><h3>One-tap SOS</h3><p>Sends your location and situation to responders instantly, even under network stress.</p></div>
+      <div class="glass-card feature-card"><div class="feature-icon">👥</div><h3>Community reports</h3><p>Crowdsourced, verified ground reports on waterlogging, road closures, and shelter availability.</p></div>
+      <div class="glass-card feature-card"><div class="feature-icon">✅</div><h3>Verified alerts</h3><p>Every alert is cross-checked against official weather and municipal data before it reaches you.</p></div>
+    </div>
+  </section>
+
+  <!-- AGENTS -->
+  <section class="section" id="agents">
+    <div class="section-head">
+      <div class="mono-tag">Under the hood</div>
+      <h2>Three AI agents, one coordinated response</h2>
+      <p>Each agent owns one part of the emergency — together they turn raw signals into a clear next step.</p>
+    </div>
+    <div class="grid-3">
+      <div class="glass-card agent-card primary">
+        <div class="mono-tag">Agent 01</div>
+        <div class="agent-icon">📡</div>
+        <h3>Sentinel</h3>
+        <div class="agent-role">Risk Assessment Agent</div>
+        <p>Continuously reads weather and terrain signals to compute and explain the live risk score for your locality.</p>
+      </div>
+      <div class="glass-card agent-card accent">
+        <div class="mono-tag">Agent 02</div>
+        <div class="agent-icon">🤖</div>
+        <h3>Wayfinder</h3>
+        <div class="agent-role">Shelter & Route Agent</div>
+        <p>Matches you to the nearest safe shelter or hospital with real capacity, and plans a route around hazards.</p>
+      </div>
+      <div class="glass-card agent-card danger">
+        <div class="mono-tag">Agent 03</div>
+        <div class="agent-icon">💬</div>
+        <h3>Responder</h3>
+        <div class="agent-role">Conversational Assistant</div>
+        <p>Answers what to do right now in plain language, grounded in your live location and situation.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- HOW IT WORKS -->
+  <section class="section" id="how-it-works">
+    <div class="section-head">
+      <div class="mono-tag">The flow</div>
+      <h2>From first drop to safe ground, in three steps</h2>
+      <p>No forms, no digging through numbers — describe what's happening and let the agents do the rest.</p>
+    </div>
+    <div class="how-steps">
+      <div class="glass-card how-step">
+        <div class="how-step-num">01</div>
+        <div class="feature-icon">📝</div>
+        <h3>Report</h3>
+        <p>Tap a quick preset or describe your situation in plain language — by text or voice, in your own language.</p>
+      </div>
+      <div class="how-connector"><span></span></div>
+      <div class="glass-card how-step">
+        <div class="how-step-num">02</div>
+        <div class="feature-icon">🧠</div>
+        <h3>Analyze</h3>
+        <p>Sentinel scores the live risk, Wayfinder checks shelter and hospital capacity nearby — all in under 60 seconds.</p>
+      </div>
+      <div class="how-connector"><span></span></div>
+      <div class="glass-card how-step">
+        <div class="how-step-num">03</div>
+        <div class="feature-icon">🧭</div>
+        <h3>Respond</h3>
+        <p>Get a clear next step: what to do right now, where to go, and a route that avoids flooded roads.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- FOOTER -->
+  <footer>
+    <div class="footer-inner">
+      <div class="footer-top">
+        <div>
+          <div class="brand"><span class="brand-icon">📡</span>ResQ<span style="color:var(--accent)">AI</span></div>
+          <p style="max-width:360px;color:var(--muted);font-size:14px;margin-top:12px;">Built for HackUnion — an AI-coordinated monsoon emergency response agent for at-risk urban neighborhoods.</p>
+        </div>
+        <div class="footer-status"><span class="dot-accent"></span><span class="mono-tag">All systems monitoring</span></div>
+      </div>
+      <div class="footer-bottom">
+        <span>© 2026 ResQ AI. Built at HackUnion.</span>
+        <div class="links">
+          <a href="#home">Home</a>
+          <a href="#features">Features</a>
+          <a href="#agents">AI Agents</a>
+          <a href="#how-it-works">How it works</a>
+        </div>
+      </div>
+    </div>
+  </footer>
+
+  <script src="script.js"></script>
+</body>
+</html>
