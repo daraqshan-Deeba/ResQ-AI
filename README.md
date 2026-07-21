@@ -205,6 +205,16 @@ The system can register a browser device token with the backend and use Firebase
                          │ & Notification Data  │
                          └──────────────────────┘
 ```
+---
+
+## 🎥 Project Demo
+
+Watch the ResQ AI demonstration video to see the platform in action, including the AI emergency assistant, emergency assessment, weather and risk monitoring, nearby hospitals, emergency shelters, community reports, and SOS location capture.
+
+▶️ **[Watch the ResQ AI Demo Video](https://drive.google.com/file/d/1jJbfOfn6eXi7nX2v4HG8RFXsgCtsK_vf/view?usp=sharing)**
+
+> The demo video is hosted on Google Drive.
+
 ## 🛠️ Technology Stack
 
 ### Frontend
