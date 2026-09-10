@@ -1,6 +1,4 @@
 import pytest
-from fastapi.testclient import TestClient
-
 from app.core.config import Settings
 from app.main import app
 from app.services import firebase_service
@@ -16,7 +14,7 @@ def test_config_defaults_without_env():
         _env_file=None,
     )
     assert cfg.groq_api_key == ""
-    assert cfg.groq_model == "llama-3.3-70b-versatile"
+    assert cfg.groq_model == "qwen/qwen3.6-27b"
     assert cfg.is_groq_available is False
     assert cfg.default_city == "Hyderabad"
 
@@ -63,31 +61,34 @@ def test_firebase_degraded_when_credentials_missing():
 
 
 def test_health_endpoint():
-    """Verify GET /health returns 200 and status ok."""
-    client = TestClient(app)
+    """Verify GET /health returns 200 and service diagnostics."""
+    client = app.test_client()
     response = client.get("/health")
     assert response.status_code == 200
-    assert response.json() == {"status": "ok"}
+    data = response.get_json()
+    assert data["status"] == "ok"
+    assert "groq_model" in data
+    assert "openweather_configured" in data
 
 
 def test_shelters_and_reports_get_endpoints_when_firebase_unavailable():
     """Verify reading shelters and reports returns empty lists instead of 500 crashes."""
-    client = TestClient(app)
+    client = app.test_client()
     shelters_res = client.get("/api/shelters")
     assert shelters_res.status_code == 200
-    assert shelters_res.json() == []
+    assert shelters_res.get_json() == []
 
     reports_res = client.get("/api/reports")
     assert reports_res.status_code == 200
-    assert reports_res.json() == []
+    assert reports_res.get_json() == []
 
 
 def test_report_post_endpoint_when_firebase_unavailable():
     """Verify submitting a report when database is unavailable returns controlled 503."""
-    client = TestClient(app)
+    client = app.test_client()
     res = client.post("/api/reports", json={"area": "Tarnaka", "message": "Flooding near underpass"})
     assert res.status_code == 503
-    assert "temporarily unavailable" in res.json()["detail"]
+    assert "temporarily unavailable" in res.get_json()["detail"]
 
 
 def test_sos_endpoint_when_firebase_unavailable():
@@ -100,10 +101,10 @@ def test_sos_endpoint_when_firebase_unavailable():
     to display a generic error and give the user no guidance — instead the
     degraded response always includes a human-readable message and the maps_link.
     """
-    client = TestClient(app)
+    client = app.test_client()
     res = client.post("/api/sos", json={"lat": 17.3850, "lon": 78.4867})
     assert res.status_code == 200
-    body = res.json()
+    body = res.get_json()
     assert body["status"] == "degraded"
     assert body["notification_status"] == "notification_disabled"
     assert "maps_link" in body
@@ -120,6 +121,7 @@ def test_firebase_initialized_when_credentials_valid(monkeypatch):
     mock_db = MagicMock()
     mock_app = MagicMock()
 
+    monkeypatch.setattr(firebase_service.settings, "firebase_credentials_path", "firebase-service-account.json")
     monkeypatch.setattr(os.path, "exists", lambda path: True)
     monkeypatch.setattr(firebase_service.credentials, "Certificate", lambda path: MagicMock())
     monkeypatch.setattr(firebase_service.firebase_admin, "initialize_app", lambda cred: mock_app)

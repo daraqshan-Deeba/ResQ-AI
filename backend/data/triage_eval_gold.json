@@ -1,0 +1,1325 @@
+{
+  "version": "1.1",
+  "updated": "2026-09-10",
+  "description": "Gold-label triage benchmark for ResQ AI classification regression testing.",
+  "category_definitions": "triage_category_definitions.json",
+  "case_count": 178,
+  "cases": [
+    {
+      "id": "floo-t1-01",
+      "text": "water is rising fast",
+      "expected_category": "flooding",
+      "suite": "tier1",
+      "max_tier": 1,
+      "source": "ResQ_AI_Data_Reference.md#tier1"
+    },
+    {
+      "id": "floo-t1-02",
+      "text": "house is flooding",
+      "expected_category": "flooding",
+      "suite": "tier1",
+      "max_tier": 1,
+      "source": "ResQ_AI_Data_Reference.md#tier1"
+    },
+    {
+      "id": "floo-t1-03",
+      "text": "water entering my home",
+      "expected_category": "flooding",
+      "suite": "tier1",
+      "max_tier": 1,
+      "source": "ResQ_AI_Data_Reference.md#tier1"
+    },
+    {
+      "id": "floo-t1-04",
+      "text": "flash flood",
+      "expected_category": "flooding",
+      "suite": "tier1",
+      "max_tier": 1,
+      "source": "ResQ_AI_Data_Reference.md#tier1"
+    },
+    {
+      "id": "floo-t1-05",
+      "text": "water level rising quickly",
+      "expected_category": "flooding",
+      "suite": "tier1",
+      "max_tier": 1,
+      "source": "ResQ_AI_Data_Reference.md#tier1"
+    },
+    {
+      "id": "floo-t1-06",
+      "text": "trapped by floodwater",
+      "expected_category": "flooding",
+      "suite": "tier1",
+      "max_tier": 1,
+      "source": "ResQ_AI_Data_Reference.md#tier1"
+    },
+    {
+      "id": "floo-t1-07",
+      "text": "street is underwater",
+      "expected_category": "flooding",
+      "suite": "tier1",
+      "max_tier": 1,
+      "source": "ResQ_AI_Data_Reference.md#tier1"
+    },
+    {
+      "id": "floo-t1-08",
+      "text": "heavy flooding in my area",
+      "expected_category": "flooding",
+      "suite": "tier1",
+      "max_tier": 1,
+      "source": "ResQ_AI_Data_Reference.md#tier1"
+    },
+    {
+      "id": "floo-t1-09",
+      "text": "car stuck in flood water",
+      "expected_category": "flooding",
+      "suite": "tier1",
+      "max_tier": 1,
+      "source": "ResQ_AI_Data_Reference.md#tier1"
+    },
+    {
+      "id": "floo-t1-10",
+      "text": "basement is flooding",
+      "expected_category": "flooding",
+      "suite": "tier1",
+      "max_tier": 1,
+      "source": "ResQ_AI_Data_Reference.md#tier1"
+    },
+    {
+      "id": "elec-t1-01",
+      "text": "live wire down",
+      "expected_category": "electrocution",
+      "suite": "tier1",
+      "max_tier": 1,
+      "source": "ResQ_AI_Data_Reference.md#tier1"
+    },
+    {
+      "id": "elec-t1-02",
+      "text": "electric shock",
+      "expected_category": "electrocution",
+      "suite": "tier1",
+      "max_tier": 1,
+      "source": "ResQ_AI_Data_Reference.md#tier1"
+    },
+    {
+      "id": "elec-t1-03",
+      "text": "power line fell",
+      "expected_category": "electrocution",
+      "suite": "tier1",
+      "max_tier": 1,
+      "source": "ResQ_AI_Data_Reference.md#tier1"
+    },
+    {
+      "id": "elec-t1-04",
+      "text": "touched a live wire",
+      "expected_category": "electrocution",
+      "suite": "tier1",
+      "max_tier": 1,
+      "source": "ResQ_AI_Data_Reference.md#tier1"
+    },
+    {
+      "id": "elec-t1-05",
+      "text": "transformer sparking",
+      "expected_category": "electrocution",
+      "suite": "tier1",
+      "max_tier": 1,
+      "source": "ResQ_AI_Data_Reference.md#tier1"
+    },
+    {
+      "id": "elec-t1-06",
+      "text": "downed power cable",
+      "expected_category": "electrocution",
+      "suite": "tier1",
+      "max_tier": 1,
+      "source": "ResQ_AI_Data_Reference.md#tier1"
+    },
+    {
+      "id": "elec-t1-07",
+      "text": "wire sparking in water",
+      "expected_category": "electrocution",
+      "suite": "tier1",
+      "max_tier": 1,
+      "source": "ResQ_AI_Data_Reference.md#tier1"
+    },
+    {
+      "id": "elec-t1-08",
+      "text": "exposed wiring near water",
+      "expected_category": "electrocution",
+      "suite": "tier1",
+      "max_tier": 1,
+      "source": "ResQ_AI_Data_Reference.md#tier1"
+    },
+    {
+      "id": "elec-t1-09",
+      "text": "smell of burning wires",
+      "expected_category": "electrocution",
+      "suite": "tier1",
+      "max_tier": 1,
+      "source": "ResQ_AI_Data_Reference.md#tier1"
+    },
+    {
+      "id": "elec-t1-10",
+      "text": "shocked by appliance",
+      "expected_category": "electrocution",
+      "suite": "tier1",
+      "max_tier": 1,
+      "source": "ResQ_AI_Data_Reference.md#tier1"
+    },
+    {
+      "id": "inju-t1-01",
+      "text": "deep cut",
+      "expected_category": "injury",
+      "suite": "tier1",
+      "max_tier": 1,
+      "source": "ResQ_AI_Data_Reference.md#tier1"
+    },
+    {
+      "id": "inju-t1-02",
+      "text": "broken bone",
+      "expected_category": "injury",
+      "suite": "tier1",
+      "max_tier": 1,
+      "source": "ResQ_AI_Data_Reference.md#tier1"
+    },
+    {
+      "id": "inju-t1-03",
+      "text": "head injury",
+      "expected_category": "injury",
+      "suite": "tier1",
+      "max_tier": 1,
+      "source": "ResQ_AI_Data_Reference.md#tier1"
+    },
+    {
+      "id": "inju-t1-04",
+      "text": "unconscious person",
+      "expected_category": "injury",
+      "suite": "tier1",
+      "max_tier": 1,
+      "source": "ResQ_AI_Data_Reference.md#tier1"
+    },
+    {
+      "id": "inju-t1-05",
+      "text": "severe bleeding",
+      "expected_category": "injury",
+      "suite": "tier1",
+      "max_tier": 1,
+      "source": "ResQ_AI_Data_Reference.md#tier1"
+    },
+    {
+      "id": "inju-t1-06",
+      "text": "bone sticking out",
+      "expected_category": "injury",
+      "suite": "tier1",
+      "max_tier": 1,
+      "source": "ResQ_AI_Data_Reference.md#tier1"
+    },
+    {
+      "id": "inju-t1-07",
+      "text": "someone fell and is hurt",
+      "expected_category": "injury",
+      "suite": "tier1",
+      "max_tier": 1,
+      "source": "ResQ_AI_Data_Reference.md#tier1"
+    },
+    {
+      "id": "inju-t1-08",
+      "text": "spinal injury",
+      "expected_category": "injury",
+      "suite": "tier1",
+      "max_tier": 1,
+      "source": "ResQ_AI_Data_Reference.md#tier1"
+    },
+    {
+      "id": "inju-t1-09",
+      "text": "person not responding",
+      "expected_category": "injury",
+      "suite": "tier1",
+      "max_tier": 1,
+      "source": "ResQ_AI_Data_Reference.md#tier1"
+    },
+    {
+      "id": "inju-t1-10",
+      "text": "lost a lot of blood",
+      "expected_category": "injury",
+      "suite": "tier1",
+      "max_tier": 1,
+      "source": "ResQ_AI_Data_Reference.md#tier1"
+    },
+    {
+      "id": "snak-t1-01",
+      "text": "snake bite",
+      "expected_category": "snakebite",
+      "suite": "tier1",
+      "max_tier": 1,
+      "source": "ResQ_AI_Data_Reference.md#tier1"
+    },
+    {
+      "id": "snak-t1-02",
+      "text": "bitten by a snake",
+      "expected_category": "snakebite",
+      "suite": "tier1",
+      "max_tier": 1,
+      "source": "ResQ_AI_Data_Reference.md#tier1"
+    },
+    {
+      "id": "snak-t1-03",
+      "text": "venomous snake",
+      "expected_category": "snakebite",
+      "suite": "tier1",
+      "max_tier": 1,
+      "source": "ResQ_AI_Data_Reference.md#tier1"
+    },
+    {
+      "id": "snak-t1-04",
+      "text": "need antivenom",
+      "expected_category": "snakebite",
+      "suite": "tier1",
+      "max_tier": 1,
+      "source": "ResQ_AI_Data_Reference.md#tier1"
+    },
+    {
+      "id": "snak-t1-05",
+      "text": "fang marks on skin",
+      "expected_category": "snakebite",
+      "suite": "tier1",
+      "max_tier": 1,
+      "source": "ResQ_AI_Data_Reference.md#tier1"
+    },
+    {
+      "id": "snak-t1-06",
+      "text": "snake bit my hand",
+      "expected_category": "snakebite",
+      "suite": "tier1",
+      "max_tier": 1,
+      "source": "ResQ_AI_Data_Reference.md#tier1"
+    },
+    {
+      "id": "snak-t1-07",
+      "text": "someone was bitten by a snake",
+      "expected_category": "snakebite",
+      "suite": "tier1",
+      "max_tier": 1,
+      "source": "ResQ_AI_Data_Reference.md#tier1"
+    },
+    {
+      "id": "snak-t1-08",
+      "text": "snake attacked",
+      "expected_category": "snakebite",
+      "suite": "tier1",
+      "max_tier": 1,
+      "source": "ResQ_AI_Data_Reference.md#tier1"
+    },
+    {
+      "id": "snak-t1-09",
+      "text": "swelling after snake bite",
+      "expected_category": "snakebite",
+      "suite": "tier1",
+      "max_tier": 1,
+      "source": "ResQ_AI_Data_Reference.md#tier1"
+    },
+    {
+      "id": "snak-t1-10",
+      "text": "cobra bite",
+      "expected_category": "snakebite",
+      "suite": "tier1",
+      "max_tier": 1,
+      "source": "ResQ_AI_Data_Reference.md#tier1"
+    },
+    {
+      "id": "cycl-t1-01",
+      "text": "cyclone warning",
+      "expected_category": "cyclone",
+      "suite": "tier1",
+      "max_tier": 1,
+      "source": "ResQ_AI_Data_Reference.md#tier1"
+    },
+    {
+      "id": "cycl-t1-02",
+      "text": "storm surge",
+      "expected_category": "cyclone",
+      "suite": "tier1",
+      "max_tier": 1,
+      "source": "ResQ_AI_Data_Reference.md#tier1"
+    },
+    {
+      "id": "cycl-t1-03",
+      "text": "roof blown off",
+      "expected_category": "cyclone",
+      "suite": "tier1",
+      "max_tier": 1,
+      "source": "ResQ_AI_Data_Reference.md#tier1"
+    },
+    {
+      "id": "cycl-t1-04",
+      "text": "cyclone alert issued",
+      "expected_category": "cyclone",
+      "suite": "tier1",
+      "max_tier": 1,
+      "source": "ResQ_AI_Data_Reference.md#tier1"
+    },
+    {
+      "id": "cycl-t1-05",
+      "text": "strong winds approaching",
+      "expected_category": "cyclone",
+      "suite": "tier1",
+      "max_tier": 1,
+      "source": "ResQ_AI_Data_Reference.md#tier1"
+    },
+    {
+      "id": "cycl-t1-06",
+      "text": "trees falling due to wind",
+      "expected_category": "cyclone",
+      "suite": "tier1",
+      "max_tier": 1,
+      "source": "ResQ_AI_Data_Reference.md#tier1"
+    },
+    {
+      "id": "cycl-t1-07",
+      "text": "extreme wind speed",
+      "expected_category": "cyclone",
+      "suite": "tier1",
+      "max_tier": 1,
+      "source": "ResQ_AI_Data_Reference.md#tier1"
+    },
+    {
+      "id": "cycl-t1-08",
+      "text": "cyclone hitting our area",
+      "expected_category": "cyclone",
+      "suite": "tier1",
+      "max_tier": 1,
+      "source": "ResQ_AI_Data_Reference.md#tier1"
+    },
+    {
+      "id": "cycl-t1-09",
+      "text": "wind damage to house",
+      "expected_category": "cyclone",
+      "suite": "tier1",
+      "max_tier": 1,
+      "source": "ResQ_AI_Data_Reference.md#tier1"
+    },
+    {
+      "id": "cycl-t1-10",
+      "text": "storm approaching fast",
+      "expected_category": "cyclone",
+      "suite": "tier1",
+      "max_tier": 1,
+      "source": "ResQ_AI_Data_Reference.md#tier1"
+    },
+    {
+      "id": "stru-t1-01",
+      "text": "building collapsed",
+      "expected_category": "structural_damage",
+      "suite": "tier1",
+      "max_tier": 1,
+      "source": "ResQ_AI_Data_Reference.md#tier1"
+    },
+    {
+      "id": "stru-t1-02",
+      "text": "roof caved in",
+      "expected_category": "structural_damage",
+      "suite": "tier1",
+      "max_tier": 1,
+      "source": "ResQ_AI_Data_Reference.md#tier1"
+    },
+    {
+      "id": "stru-t1-03",
+      "text": "trapped under rubble",
+      "expected_category": "structural_damage",
+      "suite": "tier1",
+      "max_tier": 1,
+      "source": "ResQ_AI_Data_Reference.md#tier1"
+    },
+    {
+      "id": "stru-t1-04",
+      "text": "ceiling fell",
+      "expected_category": "structural_damage",
+      "suite": "tier1",
+      "max_tier": 1,
+      "source": "ResQ_AI_Data_Reference.md#tier1"
+    },
+    {
+      "id": "stru-t1-05",
+      "text": "house is collapsing",
+      "expected_category": "structural_damage",
+      "suite": "tier1",
+      "max_tier": 1,
+      "source": "ResQ_AI_Data_Reference.md#tier1"
+    },
+    {
+      "id": "stru-t1-06",
+      "text": "wall came down",
+      "expected_category": "structural_damage",
+      "suite": "tier1",
+      "max_tier": 1,
+      "source": "ResQ_AI_Data_Reference.md#tier1"
+    },
+    {
+      "id": "stru-t1-07",
+      "text": "structure is unstable",
+      "expected_category": "structural_damage",
+      "suite": "tier1",
+      "max_tier": 1,
+      "source": "ResQ_AI_Data_Reference.md#tier1"
+    },
+    {
+      "id": "stru-t1-08",
+      "text": "debris blocking the door",
+      "expected_category": "structural_damage",
+      "suite": "tier1",
+      "max_tier": 1,
+      "source": "ResQ_AI_Data_Reference.md#tier1"
+    },
+    {
+      "id": "stru-t1-09",
+      "text": "trapped inside damaged building",
+      "expected_category": "structural_damage",
+      "suite": "tier1",
+      "max_tier": 1,
+      "source": "ResQ_AI_Data_Reference.md#tier1"
+    },
+    {
+      "id": "stru-t1-10",
+      "text": "wall crack spreading",
+      "expected_category": "structural_damage",
+      "suite": "tier1",
+      "max_tier": 1,
+      "source": "ResQ_AI_Data_Reference.md#tier1"
+    },
+    {
+      "id": "acci-t1-01",
+      "text": "car accident",
+      "expected_category": "accident",
+      "suite": "tier1",
+      "max_tier": 1,
+      "source": "ResQ_AI_Data_Reference.md#tier1"
+    },
+    {
+      "id": "acci-t1-02",
+      "text": "road accident",
+      "expected_category": "accident",
+      "suite": "tier1",
+      "max_tier": 1,
+      "source": "ResQ_AI_Data_Reference.md#tier1"
+    },
+    {
+      "id": "acci-t1-03",
+      "text": "hit by a car",
+      "expected_category": "accident",
+      "suite": "tier1",
+      "max_tier": 1,
+      "source": "ResQ_AI_Data_Reference.md#tier1"
+    },
+    {
+      "id": "acci-t1-04",
+      "text": "motorcycle accident",
+      "expected_category": "accident",
+      "suite": "tier1",
+      "max_tier": 1,
+      "source": "ResQ_AI_Data_Reference.md#tier1"
+    },
+    {
+      "id": "acci-t1-05",
+      "text": "multi-car crash",
+      "expected_category": "accident",
+      "suite": "tier1",
+      "max_tier": 1,
+      "source": "ResQ_AI_Data_Reference.md#tier1"
+    },
+    {
+      "id": "acci-t1-06",
+      "text": "pedestrian hit by vehicle",
+      "expected_category": "accident",
+      "suite": "tier1",
+      "max_tier": 1,
+      "source": "ResQ_AI_Data_Reference.md#tier1"
+    },
+    {
+      "id": "acci-t1-07",
+      "text": "truck collision",
+      "expected_category": "accident",
+      "suite": "tier1",
+      "max_tier": 1,
+      "source": "ResQ_AI_Data_Reference.md#tier1"
+    },
+    {
+      "id": "acci-t1-08",
+      "text": "accident on the highway",
+      "expected_category": "accident",
+      "suite": "tier1",
+      "max_tier": 1,
+      "source": "ResQ_AI_Data_Reference.md#tier1"
+    },
+    {
+      "id": "acci-t1-09",
+      "text": "vehicle overturned",
+      "expected_category": "accident",
+      "suite": "tier1",
+      "max_tier": 1,
+      "source": "ResQ_AI_Data_Reference.md#tier1"
+    },
+    {
+      "id": "acci-t1-10",
+      "text": "vehicle collision",
+      "expected_category": "accident",
+      "suite": "tier1",
+      "max_tier": 1,
+      "source": "ResQ_AI_Data_Reference.md#tier1"
+    },
+    {
+      "id": "floo-t2-01",
+      "text": "our ground floor is under water",
+      "expected_category": "flooding",
+      "suite": "tier2",
+      "source": "triage_service._TIER2_EXAMPLES"
+    },
+    {
+      "id": "floo-t2-02",
+      "text": "the river has overflowed into the neighbourhood",
+      "expected_category": "flooding",
+      "suite": "tier2",
+      "source": "triage_service._TIER2_EXAMPLES"
+    },
+    {
+      "id": "floo-t2-03",
+      "text": "water came in through the door during the storm",
+      "expected_category": "flooding",
+      "suite": "tier2",
+      "source": "triage_service._TIER2_EXAMPLES"
+    },
+    {
+      "id": "elec-t2-01",
+      "text": "sparks are coming from a broken wire",
+      "expected_category": "electrocution",
+      "suite": "tier2",
+      "source": "triage_service._TIER2_EXAMPLES"
+    },
+    {
+      "id": "elec-t2-02",
+      "text": "an electric pole has fallen in the street",
+      "expected_category": "electrocution",
+      "suite": "tier2",
+      "source": "triage_service._TIER2_EXAMPLES"
+    },
+    {
+      "id": "elec-t2-03",
+      "text": "the transformer is sparking dangerously",
+      "expected_category": "electrocution",
+      "suite": "tier2",
+      "source": "triage_service._TIER2_EXAMPLES"
+    },
+    {
+      "id": "inju-t2-01",
+      "text": "someone fell from a height and is seriously hurt",
+      "expected_category": "injury",
+      "suite": "tier2",
+      "source": "triage_service._TIER2_EXAMPLES"
+    },
+    {
+      "id": "inju-t2-02",
+      "text": "the victim has severe head injuries",
+      "expected_category": "injury",
+      "suite": "tier2",
+      "source": "triage_service._TIER2_EXAMPLES"
+    },
+    {
+      "id": "inju-t2-03",
+      "text": "someone is bleeding very heavily from a wound",
+      "expected_category": "injury",
+      "suite": "tier2",
+      "source": "triage_service._TIER2_EXAMPLES"
+    },
+    {
+      "id": "snak-t2-01",
+      "text": "a person was attacked by a cobra",
+      "expected_category": "snakebite",
+      "suite": "tier2",
+      "source": "triage_service._TIER2_EXAMPLES"
+    },
+    {
+      "id": "snak-t2-02",
+      "text": "someone stepped on a snake and got bitten",
+      "expected_category": "snakebite",
+      "suite": "tier2",
+      "source": "triage_service._TIER2_EXAMPLES"
+    },
+    {
+      "id": "cycl-t2-01",
+      "text": "the tropical storm is intensifying rapidly",
+      "expected_category": "cyclone",
+      "suite": "tier2",
+      "source": "triage_service._TIER2_EXAMPLES"
+    },
+    {
+      "id": "cycl-t2-02",
+      "text": "cyclone storm surge is flooding coastal areas",
+      "expected_category": "cyclone",
+      "suite": "tier2",
+      "source": "triage_service._TIER2_EXAMPLES"
+    },
+    {
+      "id": "stru-t2-01",
+      "text": "the building has partially collapsed",
+      "expected_category": "structural_damage",
+      "suite": "tier2",
+      "source": "triage_service._TIER2_EXAMPLES"
+    },
+    {
+      "id": "stru-t2-02",
+      "text": "the roof of our house fell in",
+      "expected_category": "structural_damage",
+      "suite": "tier2",
+      "source": "triage_service._TIER2_EXAMPLES"
+    },
+    {
+      "id": "stru-t2-03",
+      "text": "there are people trapped under building rubble",
+      "expected_category": "structural_damage",
+      "suite": "tier2",
+      "source": "triage_service._TIER2_EXAMPLES"
+    },
+    {
+      "id": "acci-t2-01",
+      "text": "two vehicles have crashed into each other",
+      "expected_category": "accident",
+      "suite": "tier2",
+      "source": "triage_service._TIER2_EXAMPLES"
+    },
+    {
+      "id": "acci-t2-02",
+      "text": "a pedestrian was hit by a speeding car",
+      "expected_category": "accident",
+      "suite": "tier2",
+      "source": "triage_service._TIER2_EXAMPLES"
+    },
+    {
+      "id": "acci-t2-03",
+      "text": "there is a serious crash on the main road",
+      "expected_category": "accident",
+      "suite": "tier2",
+      "source": "triage_service._TIER2_EXAMPLES"
+    },
+    {
+      "id": "neg-001",
+      "text": "the accident happened last year",
+      "expected_category": "unclassified",
+      "suite": "negative",
+      "source": "ResQ_AI_Data_Reference.md#negatives"
+    },
+    {
+      "id": "neg-002",
+      "text": "I read about a flood in the news",
+      "expected_category": "unclassified",
+      "suite": "negative",
+      "source": "ResQ_AI_Data_Reference.md#negatives"
+    },
+    {
+      "id": "neg-003",
+      "text": "just checking if this app works",
+      "expected_category": "unclassified",
+      "suite": "negative",
+      "source": "ResQ_AI_Data_Reference.md#negatives"
+    },
+    {
+      "id": "neg-004",
+      "text": "what should I do if there is ever a flood",
+      "expected_category": "unclassified",
+      "suite": "negative",
+      "source": "ResQ_AI_Data_Reference.md#negatives"
+    },
+    {
+      "id": "neg-005",
+      "text": "there was a fire drill at work today",
+      "expected_category": "unclassified",
+      "suite": "negative",
+      "source": "ResQ_AI_Data_Reference.md#negatives"
+    },
+    {
+      "id": "neg-006",
+      "text": "testing this input",
+      "expected_category": "unclassified",
+      "suite": "negative",
+      "source": "ResQ_AI_Data_Reference.md#negatives"
+    },
+    {
+      "id": "neg-007",
+      "text": "snake plant in my garden",
+      "expected_category": "unclassified",
+      "suite": "negative",
+      "source": "ResQ_AI_Data_Reference.md#negatives"
+    },
+    {
+      "id": "neg-008",
+      "text": "water bottle fell on the floor",
+      "expected_category": "unclassified",
+      "suite": "negative",
+      "source": "ResQ_AI_Data_Reference.md#negatives"
+    },
+    {
+      "id": "neg-009",
+      "text": "barbed wire fence needs repair",
+      "expected_category": "unclassified",
+      "suite": "negative",
+      "source": "ResQ_AI_Data_Reference.md#negatives"
+    },
+    {
+      "id": "neg-010",
+      "text": "I saw a documentary about cyclones",
+      "expected_category": "unclassified",
+      "suite": "negative",
+      "source": "ResQ_AI_Data_Reference.md#negatives"
+    },
+    {
+      "id": "hist-001",
+      "text": "years ago I had a car accident",
+      "expected_category": "unclassified",
+      "suite": "historical",
+      "source": "temporal_guard"
+    },
+    {
+      "id": "hist-002",
+      "text": "the accident happened last month",
+      "expected_category": "unclassified",
+      "suite": "historical",
+      "source": "temporal_guard"
+    },
+    {
+      "id": "hist-003",
+      "text": "months ago there was flooding in Chennai",
+      "expected_category": "unclassified",
+      "suite": "historical",
+      "source": "temporal_guard"
+    },
+    {
+      "id": "hist-004",
+      "text": "used to worry about cyclones when I lived on the coast",
+      "expected_category": "unclassified",
+      "suite": "historical",
+      "source": "temporal_guard"
+    },
+    {
+      "id": "hist-005",
+      "text": "weeks ago my neighbor had a minor cut",
+      "expected_category": "unclassified",
+      "suite": "historical",
+      "source": "temporal_guard"
+    },
+    {
+      "id": "ml-hi-001",
+      "text": "ghar mein pani aa raha hai",
+      "expected_category": "flooding",
+      "suite": "multilingual",
+      "source": "triage_ml_training.json"
+    },
+    {
+      "id": "ml-hi-002",
+      "text": "pani tez badh raha hai",
+      "expected_category": "flooding",
+      "suite": "multilingual",
+      "source": "triage_ml_training.json"
+    },
+    {
+      "id": "ml-hi-003",
+      "text": "sadak pani mein doob gayi",
+      "expected_category": "flooding",
+      "suite": "multilingual",
+      "source": "triage_ml_training.json"
+    },
+    {
+      "id": "ml-hi-004",
+      "text": "barish ki wajah se ghar mein pani ghus raha hai",
+      "expected_category": "flooding",
+      "suite": "multilingual",
+      "source": "triage_ml_training.json"
+    },
+    {
+      "id": "ml-hi-005",
+      "text": "flash flood aa gaya hamare area mein",
+      "expected_category": "flooding",
+      "suite": "multilingual",
+      "source": "triage_ml_training.json"
+    },
+    {
+      "id": "ml-hi-006",
+      "text": "घर में पानी आ रहा है",
+      "expected_category": "flooding",
+      "suite": "multilingual",
+      "source": "triage_ml_training.json"
+    },
+    {
+      "id": "ml-hi-007",
+      "text": "पानी तेज़ बढ़ रहा है",
+      "expected_category": "flooding",
+      "suite": "multilingual",
+      "source": "triage_ml_training.json"
+    },
+    {
+      "id": "ml-hi-008",
+      "text": "सड़क पानी में डूब गई",
+      "expected_category": "flooding",
+      "suite": "multilingual",
+      "source": "triage_ml_training.json"
+    },
+    {
+      "id": "ml-te-009",
+      "text": "intlo neeru vastondi",
+      "expected_category": "flooding",
+      "suite": "multilingual",
+      "source": "triage_ml_training.json"
+    },
+    {
+      "id": "ml-te-010",
+      "text": "ma intlo water enter avutundi",
+      "expected_category": "flooding",
+      "suite": "multilingual",
+      "source": "triage_ml_training.json"
+    },
+    {
+      "id": "ml-te-011",
+      "text": "road water lo munigindi",
+      "expected_category": "flooding",
+      "suite": "multilingual",
+      "source": "triage_ml_training.json"
+    },
+    {
+      "id": "ml-te-012",
+      "text": "varsham valla street water logged",
+      "expected_category": "flooding",
+      "suite": "multilingual",
+      "source": "triage_ml_training.json"
+    },
+    {
+      "id": "ml-te-013",
+      "text": "ఇంట్లో నీరు వస్తోంది",
+      "expected_category": "flooding",
+      "suite": "multilingual",
+      "source": "triage_ml_training.json"
+    },
+    {
+      "id": "ml-te-014",
+      "text": "వరద నీరు ఇంట్లోకి వస్తోంది",
+      "expected_category": "flooding",
+      "suite": "multilingual",
+      "source": "triage_ml_training.json"
+    },
+    {
+      "id": "ml-hi-015",
+      "text": "bijli ka jhatka laga",
+      "expected_category": "electrocution",
+      "suite": "multilingual",
+      "source": "triage_ml_training.json"
+    },
+    {
+      "id": "ml-hi-016",
+      "text": "live wire gir gayi sadak pe",
+      "expected_category": "electrocution",
+      "suite": "multilingual",
+      "source": "triage_ml_training.json"
+    },
+    {
+      "id": "ml-hi-017",
+      "text": "current lag gaya kisi ko",
+      "expected_category": "electrocution",
+      "suite": "multilingual",
+      "source": "triage_ml_training.json"
+    },
+    {
+      "id": "ml-hi-018",
+      "text": "bijli ki taar gir gayi",
+      "expected_category": "electrocution",
+      "suite": "multilingual",
+      "source": "triage_ml_training.json"
+    },
+    {
+      "id": "ml-hi-019",
+      "text": "transformer se spark aa rahi hai",
+      "expected_category": "electrocution",
+      "suite": "multilingual",
+      "source": "triage_ml_training.json"
+    },
+    {
+      "id": "ml-hi-020",
+      "text": "बिजली का झटका लगा",
+      "expected_category": "electrocution",
+      "suite": "multilingual",
+      "source": "triage_ml_training.json"
+    },
+    {
+      "id": "ml-hi-021",
+      "text": "लाइव वायर गिर गई",
+      "expected_category": "electrocution",
+      "suite": "multilingual",
+      "source": "triage_ml_training.json"
+    },
+    {
+      "id": "ml-te-022",
+      "text": "current shock ayindi",
+      "expected_category": "electrocution",
+      "suite": "multilingual",
+      "source": "triage_ml_training.json"
+    },
+    {
+      "id": "ml-te-023",
+      "text": "live wire padipoyindi",
+      "expected_category": "electrocution",
+      "suite": "multilingual",
+      "source": "triage_ml_training.json"
+    },
+    {
+      "id": "ml-te-024",
+      "text": "transformer nundi sparks vastunnayi",
+      "expected_category": "electrocution",
+      "suite": "multilingual",
+      "source": "triage_ml_training.json"
+    },
+    {
+      "id": "ml-te-025",
+      "text": "విద్యుత్ షాక్ అయింది",
+      "expected_category": "electrocution",
+      "suite": "multilingual",
+      "source": "triage_ml_training.json"
+    },
+    {
+      "id": "ml-te-026",
+      "text": "లైవ్ వైర్ పడిపోయింది",
+      "expected_category": "electrocution",
+      "suite": "multilingual",
+      "source": "triage_ml_training.json"
+    },
+    {
+      "id": "ml-hi-027",
+      "text": "bahut bleeding ho rahi hai",
+      "expected_category": "injury",
+      "suite": "multilingual",
+      "source": "triage_ml_training.json"
+    },
+    {
+      "id": "ml-hi-028",
+      "text": "haddi toot gayi",
+      "expected_category": "injury",
+      "suite": "multilingual",
+      "source": "triage_ml_training.json"
+    },
+    {
+      "id": "ml-hi-029",
+      "text": "wo unconscious hai",
+      "expected_category": "injury",
+      "suite": "multilingual",
+      "source": "triage_ml_training.json"
+    },
+    {
+      "id": "ml-hi-030",
+      "text": "kisi ko serious injury hui",
+      "expected_category": "injury",
+      "suite": "multilingual",
+      "source": "triage_ml_training.json"
+    },
+    {
+      "id": "ml-hi-031",
+      "text": "sar par chot lagi hai",
+      "expected_category": "injury",
+      "suite": "multilingual",
+      "source": "triage_ml_training.json"
+    },
+    {
+      "id": "ml-hi-032",
+      "text": "खून बह रहा है",
+      "expected_category": "injury",
+      "suite": "multilingual",
+      "source": "triage_ml_training.json"
+    },
+    {
+      "id": "ml-hi-033",
+      "text": "हड्डी टूट गई",
+      "expected_category": "injury",
+      "suite": "multilingual",
+      "source": "triage_ml_training.json"
+    },
+    {
+      "id": "ml-te-034",
+      "text": "chala bleeding avutundi",
+      "expected_category": "injury",
+      "suite": "multilingual",
+      "source": "triage_ml_training.json"
+    },
+    {
+      "id": "ml-te-035",
+      "text": "bone break ayyindi",
+      "expected_category": "injury",
+      "suite": "multilingual",
+      "source": "triage_ml_training.json"
+    },
+    {
+      "id": "ml-te-036",
+      "text": "athadu unconscious ga unnadu",
+      "expected_category": "injury",
+      "suite": "multilingual",
+      "source": "triage_ml_training.json"
+    },
+    {
+      "id": "ml-te-037",
+      "text": "తలకు గాయం అయింది",
+      "expected_category": "injury",
+      "suite": "multilingual",
+      "source": "triage_ml_training.json"
+    },
+    {
+      "id": "ml-te-038",
+      "text": "ఎక్కువ రక్తం వస్తోంది",
+      "expected_category": "injury",
+      "suite": "multilingual",
+      "source": "triage_ml_training.json"
+    },
+    {
+      "id": "ml-hi-039",
+      "text": "saanp ne kaat liya",
+      "expected_category": "snakebite",
+      "suite": "multilingual",
+      "source": "triage_ml_training.json"
+    },
+    {
+      "id": "ml-hi-040",
+      "text": "snake bite ho gaya",
+      "expected_category": "snakebite",
+      "suite": "multilingual",
+      "source": "triage_ml_training.json"
+    },
+    {
+      "id": "ml-hi-041",
+      "text": "zeherila saanp ne kata",
+      "expected_category": "snakebite",
+      "suite": "multilingual",
+      "source": "triage_ml_training.json"
+    },
+    {
+      "id": "ml-hi-042",
+      "text": "antivenom chahiye",
+      "expected_category": "snakebite",
+      "suite": "multilingual",
+      "source": "triage_ml_training.json"
+    },
+    {
+      "id": "ml-hi-043",
+      "text": "सांप ने काट लिया",
+      "expected_category": "snakebite",
+      "suite": "multilingual",
+      "source": "triage_ml_training.json"
+    },
+    {
+      "id": "ml-te-044",
+      "text": "पामు కుట్టింది",
+      "expected_category": "snakebite",
+      "suite": "multilingual",
+      "source": "triage_ml_training.json"
+    },
+    {
+      "id": "ml-te-045",
+      "text": "paamu kadithindi",
+      "expected_category": "snakebite",
+      "suite": "multilingual",
+      "source": "triage_ml_training.json"
+    },
+    {
+      "id": "ml-te-046",
+      "text": "snake bite ayyindi",
+      "expected_category": "snakebite",
+      "suite": "multilingual",
+      "source": "triage_ml_training.json"
+    },
+    {
+      "id": "ml-te-047",
+      "text": "venomous snake bite",
+      "expected_category": "snakebite",
+      "suite": "multilingual",
+      "source": "triage_ml_training.json"
+    },
+    {
+      "id": "ml-hi-048",
+      "text": "tufan aa raha hai",
+      "expected_category": "cyclone",
+      "suite": "multilingual",
+      "source": "triage_ml_training.json"
+    },
+    {
+      "id": "ml-hi-049",
+      "text": "tez hawa chal rahi hai",
+      "expected_category": "cyclone",
+      "suite": "multilingual",
+      "source": "triage_ml_training.json"
+    },
+    {
+      "id": "ml-hi-050",
+      "text": "cyclone warning aa gayi",
+      "expected_category": "cyclone",
+      "suite": "multilingual",
+      "source": "triage_ml_training.json"
+    },
+    {
+      "id": "ml-hi-051",
+      "text": "chat ukhad gayi",
+      "expected_category": "cyclone",
+      "suite": "multilingual",
+      "source": "triage_ml_training.json"
+    },
+    {
+      "id": "ml-hi-052",
+      "text": "तूफान आ रहा है",
+      "expected_category": "cyclone",
+      "suite": "multilingual",
+      "source": "triage_ml_training.json"
+    },
+    {
+      "id": "ml-te-053",
+      "text": "తుఫాను వస్తోంది",
+      "expected_category": "cyclone",
+      "suite": "multilingual",
+      "source": "triage_ml_training.json"
+    },
+    {
+      "id": "ml-te-054",
+      "text": "gali tez ga vistundi",
+      "expected_category": "cyclone",
+      "suite": "multilingual",
+      "source": "triage_ml_training.json"
+    },
+    {
+      "id": "ml-te-055",
+      "text": "cyclone warning vachindi",
+      "expected_category": "cyclone",
+      "suite": "multilingual",
+      "source": "triage_ml_training.json"
+    },
+    {
+      "id": "ml-te-056",
+      "text": "roof blow off ayyindi",
+      "expected_category": "cyclone",
+      "suite": "multilingual",
+      "source": "triage_ml_training.json"
+    },
+    {
+      "id": "ml-hi-057",
+      "text": "building gir gayi",
+      "expected_category": "structural_damage",
+      "suite": "multilingual",
+      "source": "triage_ml_training.json"
+    },
+    {
+      "id": "ml-hi-058",
+      "text": "chhat gir gayi",
+      "expected_category": "structural_damage",
+      "suite": "multilingual",
+      "source": "triage_ml_training.json"
+    },
+    {
+      "id": "ml-hi-059",
+      "text": "debris ke neeche koi phansa hai",
+      "expected_category": "structural_damage",
+      "suite": "multilingual",
+      "source": "triage_ml_training.json"
+    },
+    {
+      "id": "ml-hi-060",
+      "text": "diwar gir gayi",
+      "expected_category": "structural_damage",
+      "suite": "multilingual",
+      "source": "triage_ml_training.json"
+    },
+    {
+      "id": "ml-hi-061",
+      "text": "इमारत गिर गई",
+      "expected_category": "structural_damage",
+      "suite": "multilingual",
+      "source": "triage_ml_training.json"
+    },
+    {
+      "id": "ml-te-062",
+      "text": "building collapse ayyindi",
+      "expected_category": "structural_damage",
+      "suite": "multilingual",
+      "source": "triage_ml_training.json"
+    },
+    {
+      "id": "ml-te-063",
+      "text": "paina rubble kinda trap ayyaru",
+      "expected_category": "structural_damage",
+      "suite": "multilingual",
+      "source": "triage_ml_training.json"
+    },
+    {
+      "id": "ml-te-064",
+      "text": "భవనం కుప్పకూలింది",
+      "expected_category": "structural_damage",
+      "suite": "multilingual",
+      "source": "triage_ml_training.json"
+    },
+    {
+      "id": "ml-te-065",
+      "text": "పైకప్పు కుప్పకూలింది",
+      "expected_category": "structural_damage",
+      "suite": "multilingual",
+      "source": "triage_ml_training.json"
+    },
+    {
+      "id": "ml-hi-066",
+      "text": "car accident ho gaya",
+      "expected_category": "accident",
+      "suite": "multilingual",
+      "source": "triage_ml_training.json"
+    },
+    {
+      "id": "ml-hi-067",
+      "text": "road pe accident hua",
+      "expected_category": "accident",
+      "suite": "multilingual",
+      "source": "triage_ml_training.json"
+    },
+    {
+      "id": "ml-hi-068",
+      "text": "bike accident ho gaya",
+      "expected_category": "accident",
+      "suite": "multilingual",
+      "source": "triage_ml_training.json"
+    },
+    {
+      "id": "ml-hi-069",
+      "text": "kisi ko car ne thok diya",
+      "expected_category": "accident",
+      "suite": "multilingual",
+      "source": "triage_ml_training.json"
+    },
+    {
+      "id": "ml-hi-070",
+      "text": "सड़क पर एक्सीडेंट हुआ",
+      "expected_category": "accident",
+      "suite": "multilingual",
+      "source": "triage_ml_training.json"
+    },
+    {
+      "id": "ml-te-071",
+      "text": "road accident ayyindi",
+      "expected_category": "accident",
+      "suite": "multilingual",
+      "source": "triage_ml_training.json"
+    },
+    {
+      "id": "ml-te-072",
+      "text": "car collision ayyindi",
+      "expected_category": "accident",
+      "suite": "multilingual",
+      "source": "triage_ml_training.json"
+    },
+    {
+      "id": "ml-te-073",
+      "text": "bike accident ayyindi",
+      "expected_category": "accident",
+      "suite": "multilingual",
+      "source": "triage_ml_training.json"
+    },
+    {
+      "id": "ml-te-074",
+      "text": "వాహనం ప్రమాదం అయింది",
+      "expected_category": "accident",
+      "suite": "multilingual",
+      "source": "triage_ml_training.json"
+    }
+  ]
+}

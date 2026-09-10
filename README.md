@@ -10,6 +10,16 @@ The platform combines AI-powered emergency assistance, real-time weather monitor
 
 ---
 
+## 📚 Architecture reference
+
+Canonical fix algorithms and scope decisions: [`docs/resq-ai-fix-algorithms.md`](docs/resq-ai-fix-algorithms.md)
+
+Google login & registration setup: [`docs/auth-setup.md`](docs/auth-setup.md)
+
+Secrets & env layout: [`docs/security-secrets.md`](docs/security-secrets.md)
+
+---
+
 ## 🌟 Overview
 
 During emergencies, people often need immediate access to reliable information, nearby resources, and clear guidance. ResQ AI aims to simplify this process by providing multiple emergency support features through a single platform.
@@ -64,7 +74,7 @@ Example scenarios include:
 
 The system processes the situation and provides structured emergency guidance.
 
-Voice input is also supported through the browser's built-in Web Speech API where available.
+Voice input on the assessment page records audio in the browser and transcribes it server-side via Groq Whisper (`/api/transcribe`).
 
 ---
 
@@ -173,13 +183,13 @@ The system can register a browser device token with the backend and use Firebase
 ```text
                         ┌─────────────────────────┐
                         │      ResQ AI User       │
-                        │ (HTML5 / Vanilla JS UI) │
+                        │   (Next.js Frontend)    │
                         └────────────┬────────────┘
                                      │ POST /api/assessment
                                      │ (Explicit location opt-in)
                                      ▼
                         ┌─────────────────────────┐
-                        │      FastAPI Router     │
+                        │      Flask API          │
                         │    /api/assessment      │
                         └────────────┬────────────┘
                                      │
@@ -206,20 +216,25 @@ The system can register a browser device token with the backend and use Firebase
                                      │
                                      ▼
                           ┌──────────────────────┐
-                          │   Firebase Backend   │
-                          │ Firestore + FCM Push │
+                          │  Supabase (primary)  │
+                          │ Postgres + Storage   │
+                          │ + pgvector knowledge │
+                          └──────────┬───────────┘
+                                     │
+                          ┌──────────▼───────────┐
+                          │ Firebase (optional)  │
+                          │ FCM push only        │
                           └──────────────────────┘
 ```
 ## 🛠️ Technology Stack
 
 ### Frontend
-- HTML5, CSS3, Vanilla JavaScript (ES6+, zero build step)
+- Next.js 16 (App Router) / React 19 / TypeScript / Tailwind CSS
 - Browser Geolocation API (Strict User Opt-In)
-- Web Speech API (Optional Voice Input)
-- Firebase Cloud Messaging Client
+- Firebase Cloud Messaging Client (optional — configure in `.env.local`)
 
 ### Backend
-- Python 3.12+ / FastAPI / Uvicorn
+- Python 3.12+ / Flask / Flask-CORS
 - Pydantic v2 (Validation & Schemas)
 - Scikit-learn (Local TF-IDF Vectorization for Tier 2 Triage)
 - HTTPX (Asynchronous Defensive Network Clients)
@@ -227,5 +242,8 @@ The system can register a browser device token with the backend and use Firebase
 ### External Integrations
 - **Groq Cloud API:** Structured Action Planning (Llama 3.3 70B)
 - **OpenWeatherMap API:** Live Meteorological Observations
-- **Google Places API:** Verified Nearby Hospital Lookups
-- **Firebase Admin SDK:** Firestore Persistence & Cloud Messaging (FCM) Alert Topic Dispatch
+- **Supabase Postgres:** Hospital directory, shelters, reports, SOS events
+- **Firebase (FCM only):** Push notifications for SOS alerts
+- **OpenWeatherMap API:** Live weather and risk scoring
+- **Supabase:** Postgres persistence, object storage, pgvector knowledge search
+- **Firebase Admin SDK (optional):** Cloud Messaging (FCM) alert topic dispatch

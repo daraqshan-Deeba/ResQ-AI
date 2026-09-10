@@ -1,5 +1,5 @@
-fastapi==0.115.0
-uvicorn[standard]==0.30.6
+flask[async]==3.0.3
+flask-cors==5.0.0
 pydantic==2.9.2
 pydantic-settings==2.5.2
 python-dotenv==1.0.1
@@ -7,8 +7,20 @@ python-dotenv==1.0.1
 # Weather — Sentinel risk agent
 httpx==0.27.2
 
-# LLM — Responder + Get Help Now agent (Grok / xAI, OpenAI-compatible API)
+# LLM — Responder + Get Help Now agent (Groq, OpenAI-compatible API)
 # called via httpx directly, no extra SDK needed
 
 # Database + Push notifications — Firestore + Firebase Cloud Messaging
 firebase-admin==6.5.0
+
+# Triage Tier 2 — local TF-IDF cosine similarity
+scikit-learn==1.5.2
+
+# Redis Agent Memory — chat session + semantic long-term recall
+redis-agent-memory>=0.3.0
+
+# Supabase — Postgres persistence (shelters, reports, SOS events)
+supabase>=2.10.0
+
+# Local embeddings for Supabase pgvector (downloads model on first use)
+fastembed>=0.4.2

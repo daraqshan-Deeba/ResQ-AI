@@ -1,129 +1,57 @@
-# ResQ AI — Backend
+# ResQ AI — Backend (Flask)
 
-FastAPI backend powered by the Emergency Orchestrator pipeline:
+Flask API powered by the Emergency Orchestrator pipeline. All business logic lives in `app/services/`; HTTP routes are Flask blueprints under `app/blueprints/`.
 
-- **Emergency Assessment** (`/api/assessment`) — Orchestrated multi-stage assessment:
-  1. Input validation & coordinate integrity
-  2. 3-Tier Triage (Deterministic regex rules -> Local TF-IDF cosine similarity -> Groq / Unclassified fallback)
-  3. Deterministic weather risk assessment (OpenWeatherMap)
-  4. Structured action planning with validated JSON output (Groq Llama 3.3 70B / Curated deterministic fallback)
-  5. Weakest-link confidence aggregation
-  6. Verified nearby hospital search (Google Places API — location-gated only)
-  7. Decoupled SOS persistence-first flow
-- **Sentinel** (`/api/weather`, `/api/weather/risk`) — OpenWeatherMap live conditions and deterministic flood/storm risk calculation.
-- **Wayfinder** (`/api/hospitals`, `/api/shelters`) — Google Places for verified hospitals; Firestore for shelters.
-- **SOS** (`/api/sos`) — Decoupled SOS event persistence (Firestore) followed by FCM topic dispatch.
-- **Community** (`/api/reports`, `/api/device-token`, `/api/chat`) — Community incident reports, push token registration, and contextual multi-turn emergency responder assistant.
+## Endpoints
 
-## Step 1 — Firebase project (database + push, ~5 minutes)
+- **Emergency Assessment** — `POST /api/assessment`
+- **Weather / Risk** — `GET /api/weather`, `GET /api/weather/risk`
+- **Hospitals / Shelters** — `GET /api/hospitals`, `GET /api/shelters`
+- **SOS** — `POST /api/sos`
+- **Community** — `GET|POST /api/reports`, `POST /api/device-token`, `POST /api/chat`
+- **Health** — `GET /health`
 
-1. Go to https://console.firebase.google.com → **Add project** → give it any
-   name (e.g. `resq-ai`) → you can skip Google Analytics.
-2. In the left sidebar: **Build → Firestore Database → Create database** →
-   pick a region close to you → start in **test mode** (fine for a hackathon;
-   tighten the rules before any real deployment).
-3. In the left sidebar: **Build → Cloud Messaging** → it's enabled by default,
-   nothing else to do here yet.
-4. Click the ⚙️ gear (top left) → **Project settings → Service accounts** tab
-   → **Generate new private key**. This downloads a JSON file.
-5. Rename that file to `firebase-service-account.json` and put it in this
-   `resq-backend` folder (same level as `requirements.txt`). **Never commit
-   this file** — it's already listed in `.gitignore`.
-6. Still in Project settings, go to the **General** tab → scroll to
-   "Your apps" → click the **Web** icon (`</>`) → register an app (any
-   nickname) → you'll get a `firebaseConfig` object. Copy it — the frontend
-   needs it (see the frontend README).
-7. One tab over: **Project settings → Cloud Messaging** → scroll to
-   **Web configuration → Web Push certificates → Generate key pair**. Copy
-   the key shown — the frontend needs this too (it's the "VAPID key").
-
-## Step 2 — Grok (xAI) API key
-
-Go to https://console.x.ai, create a key. It should look like `xai-...` —
-if the key you're using starts with something else (e.g. `AQ...`), it's from
-the wrong service and won't authenticate.
-
-## Step 3 — the rest of the keys
-
-- `OPENWEATHER_API_KEY` → https://openweathermap.org/api (free tier)
-- `GOOGLE_MAPS_API_KEY` → https://console.cloud.google.com — enable
-  **Places API (New)** and **Directions API** on the project, then create a
-  key under APIs & Services → Credentials.
-
-## Step 4 — install and configure
+## Setup
 
 ```bash
 python -m venv venv
-source venv/bin/activate   # Windows: venv\Scripts\activate
+# Windows: venv\Scripts\activate
+# macOS/Linux: source venv/bin/activate
 pip install -r requirements.txt
-cp .env.example .env
+cp .env.example .env   # creates backend/.env — never commit this file
 ```
 
-Open `.env` and fill in `GROK_API_KEY`, `OPENWEATHER_API_KEY`,
-`GOOGLE_MAPS_API_KEY`. Leave `FIREBASE_CREDENTIALS_PATH` as-is if you named
-the file exactly `firebase-service-account.json`.
-
-## Step 5 — seed sample data and run
+Fill in API keys in `backend/.env`. See `.env.example` for Firebase, Groq, OpenWeather, and Supabase.  
+Frontend public vars go in `frontend/.env.local` — see `docs/security-secrets.md`.
 
 ```bash
-python seed_shelters.py     # optional: puts 3 example shelters in Firestore
-uvicorn app.main:app --reload --port 8000
+python scripts/apply_supabase_schema.py   # create Supabase tables (once)
+python scripts/seed_database.py         # shelters, reports, knowledge assets
+python scripts/fetch_hospitals_overpass.py  # hospitals → Firebase
+python run.py                           # http://127.0.0.1:8001
 ```
 
-Check http://localhost:8000/docs for interactive API docs — every endpoint
-can be tested from there before you touch the frontend at all.
+Data sources and download links: `data/DATA_SOURCES.md`  
+Raw KML/metadata: `data/sources/` (gitignored when large)
 
-## What's wired on the frontend side
+## CORS (Next.js frontend)
 
-`script.js` calls these for real:
+Set `CORS_ORIGINS` in `.env` to include your Next.js dev server:
 
-- Chat widget → `POST /api/chat`
-- "Get Help Now" → `POST /api/assessment`
-- Dashboard risk gauge / weather → `GET /api/weather/risk`, `GET /api/weather`
-- Hospitals page → `GET /api/hospitals`
-- Shelters page → `GET /api/shelters`
-- Community Reports page → `GET`/`POST /api/reports`
-- Settings page "Enable Push Alerts" button → registers this browser for
-  push via `POST /api/device-token`
-- SOS page → `POST /api/sos`, which pushes a notification to every
-  registered device (see the frontend README for the Firebase JS setup this
-  needs)
+```
+CORS_ORIGINS=http://localhost:3000,http://127.0.0.1:3000
+```
 
-Every call goes through the `apiCall()` helper in `script.js`, which never
-throws — if the backend is down or misconfigured, the UI shows a `⚠️`
-message inline instead of breaking.
+## Running with the frontend
 
-## Running frontend + backend together
+1. Start backend: `python run.py`
+2. Start frontend: `cd ../frontend && npm run dev`
+3. Open http://localhost:3000
 
-1. Start this backend: `uvicorn app.main:app --reload --port 8000`
-2. Serve the frontend folder with a real local server rather than opening
-   `index.html` directly (push notifications specifically need this — a
-   service worker won't register from a `file://` URL):
-   - VS Code: right-click `index.html` → "Open with Live Server"
-   - or: `python -m http.server 5500` from inside the frontend folder
-3. Open the dashboard → Settings → "Enable Push Alerts" → allow notifications
-   when the browser prompts. This registers your device.
-4. Go to the SOS page and confirm — you should see a real push notification
-   appear (even if the tab isn't focused), sent through Firebase.
-5. Submit an emergency assessment — if `GROK_API_KEY` is valid, you'll get a
-   real Grok-generated response instead of the "Couldn't reach Responder"
-   fallback message.
+Or from the repo root: `./start.sh` (bash).
 
-If you see `⚠️ Could not reach the backend`, it's almost always: uvicorn
-isn't running, the port doesn't match `API_BASE` in `script.js`, or your
-frontend's origin isn't in `CORS_ORIGINS`.
+## Tests
 
-## Notes on data honesty
-
-- **Hospital bed counts and shelter occupancy are not available from any
-  public API.** The hospital list is real (via Google Places); the shelter
-  list and occupancy numbers live in Firestore and are whatever you (or an
-  admin) put there — keep it manually maintained, or clearly mark it as demo
-  data until you have a real feed.
-- **The risk score is a heuristic**, not an official flood model — it
-  combines real rainfall data with a fixed placeholder for drainage capacity.
-  Good enough to demo the concept; say so if anyone asks how it's calculated.
-- **Grok responses aren't grounded in live web search by default** in this
-  setup (see the comment in `grok_service.py`) — the NEARBY HELP section
-  comes from the model's training data, so treat those specific names/links
-  as a starting point to verify, not a live lookup.
+```bash
+pytest
+```

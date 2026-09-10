@@ -31,6 +31,7 @@ from app.models.schemas import (
     ActionPlan,
     ActionPlanContext,
     AssessmentResult,
+    CommunityInsight,
     ConfidenceResult,
     EmergencyCategory,
     HospitalOut,
@@ -43,8 +44,9 @@ from app.models.schemas import (
 from app.services import (
     action_planner_service,
     confidence_service,
-    firebase_service,
+    database_service,
     maps_service,
+    supabase_service,
     triage_service,
     weather_service,
 )
@@ -125,6 +127,111 @@ def determine_emergency_level(
 
 
 # ─────────────────────────────────────────────────────────────────────────────
+# Community Context (Section 9.2 — accepted into orchestrator scope)
+# ─────────────────────────────────────────────────────────────────────────────
+
+def _fetch_community_insights(description: str, city: str) -> list[CommunityInsight]:
+    """Pull relevant community reports and vector-indexed knowledge for the assessment."""
+    insights: list[CommunityInsight] = []
+    seen_ids: set[str] = set()
+    description_lower = description.lower()
+    city_lower = city.lower()
+
+    try:
+        for report in database_service.list_reports():
+            area = (report.get("area") or "").strip()
+            message = (report.get("message") or "").strip()
+            if not area or not message:
+                continue
+            area_match = city_lower in area.lower() or area.lower() in city_lower
+            text_match = any(
+                token in message.lower()
+                for token in description_lower.split()
+                if len(token) > 4
+            )
+            if not area_match and not text_match:
+                continue
+            report_id = str(report["id"])
+            if report_id in seen_ids:
+                continue
+            seen_ids.add(report_id)
+            insights.append(
+                CommunityInsight(
+                    id=report_id,
+                    area=area,
+                    message=message,
+                    verified=bool(report.get("verified")),
+                    source="community_report",
+                    attachment_url=report.get("attachment_url"),
+                    created_at=report.get("created_at"),
+                )
+            )
+    except Exception as exc:
+        logger.warning("orchestrator: community report lookup failed: %s", exc)
+
+    try:
+        from app.services import knowledge_service
+
+        if knowledge_service.knowledge_available():
+            for item in knowledge_service.search_knowledge(description, area=city, limit=3):
+                item_id = str(item.get("id") or "")
+                if not item_id or item_id in seen_ids:
+                    continue
+                seen_ids.add(item_id)
+                insights.append(
+                    CommunityInsight(
+                        id=item_id,
+                        area=item.get("area") or city,
+                        message=item.get("content_text") or item.get("title") or "",
+                        verified=False,
+                        source="knowledge_asset",
+                        attachment_url=item.get("storage_url"),
+                        similarity=item.get("similarity"),
+                        created_at=item.get("created_at"),
+                    )
+                )
+    except Exception as exc:
+        logger.warning("orchestrator: knowledge search failed: %s", exc)
+
+    return insights[:5]
+
+
+def _build_source_labels(
+    triage_res: TriageResult,
+    weather_status: str,
+    action_plan_source: str,
+    maps_status: str,
+    community_count: int,
+) -> dict[str, str]:
+    triage_labels = {1: "deterministic_keyword", 2: "embedding_or_ml", 3: "ai_classification"}
+    weather_labels = {
+        "available": "live_weather_api",
+        "not_requested": "not_used",
+    }
+    hospital_labels = {
+        "available": (
+            "supabase_directory"
+            if supabase_service.supabase_available
+            else "firebase_directory"
+        ),
+        "not_requested": "location_not_provided",
+    }
+    action_labels = {
+        "groq": "ai_generated",
+        "deterministic": "deterministic_fallback",
+    }
+
+    return {
+        "triage": triage_labels.get(triage_res.tier, "unknown"),
+        "weather": weather_labels.get(weather_status, "unavailable"),
+        "action_plan": action_labels.get(action_plan_source, "unknown"),
+        "hospitals": hospital_labels.get(maps_status, "unavailable"),
+        "community": "community_reports" if community_count else "none",
+        "shelters": "database",
+    }
+
+
+# ─────────────────────────────────────────────────────────────────────────────
 # Core Pipeline Execution
 # ─────────────────────────────────────────────────────────────────────────────
 
@@ -200,7 +307,7 @@ async def orchestrate_emergency_assessment(
         location_context={"city": effective_city, "lat": lat, "lon": lon},
         available_services={
             "weather": weather_res.available,
-            "maps": bool(settings.google_maps_api_key),
+            "maps": database_service.hospitals_directory_available(),
             "groq": settings.is_groq_available,
         },
         trusted_contacts=DEFAULT_TRUSTED_CONTACTS,
@@ -258,10 +365,10 @@ async def orchestrate_emergency_assessment(
         }
 
         try:
-            event_id = firebase_service.create_sos_record(initial_data)
+            event_id = database_service.create_sos_record(initial_data)
 
-            if not firebase_service.firebase_available:
-                firebase_service.update_sos_record(
+            if not database_service.push_available():
+                database_service.update_sos_record(
                     event_id,
                     {"notification_status": "notification_disabled", "updated_at": _NOW_ISO()},
                 )
@@ -275,12 +382,12 @@ async def orchestrate_emergency_assessment(
             else:
                 notify_body = situation or description[:100]
                 try:
-                    message_id = firebase_service.send_topic_push(
+                    message_id = database_service.send_topic_push(
                         title="🚨 ResQ AI — SOS Alert",
                         body=notify_body,
                         data={"lat": str(lat), "lon": str(lon), "maps_link": maps_link, "event_id": event_id},
                     )
-                    firebase_service.update_sos_record(
+                    database_service.update_sos_record(
                         event_id,
                         {"notification_status": "notification_accepted", "message_id": message_id, "updated_at": _NOW_ISO()},
                     )
@@ -293,7 +400,7 @@ async def orchestrate_emergency_assessment(
                     )
                 except Exception as exc:
                     safe_detail = f"{type(exc).__name__}: notification delivery failed"
-                    firebase_service.update_sos_record(
+                    database_service.update_sos_record(
                         event_id,
                         {"notification_status": "notification_failed", "error_detail": safe_detail, "updated_at": _NOW_ISO()},
                     )
@@ -313,16 +420,30 @@ async def orchestrate_emergency_assessment(
                 message="⚠️ Emergency services could not be reached. Call 112 immediately. SOS not recorded.",
             )
 
+    # ── Stage 7b: Community Context (Section 9.2) ────────────────────────────
+    community_insights = _fetch_community_insights(description, effective_city)
+    community_status = "available" if community_insights else "none"
+
     # ── Stage 8: Result Assembly ───────────────────────────────────────────────
     emergency_level = determine_emergency_level(triage_res.category, weather_dict.get("level"))
-    firebase_status = "available" if firebase_service.firebase_available else "unavailable"
+    database_status = "available" if database_service.database_available() else "unavailable"
+    push_status = "available" if database_service.push_available() else "unavailable"
 
     service_status = {
         "weather": weather_status,
         "maps": maps_status,
         "groq": groq_status,
-        "firebase": firebase_status,
+        "database": database_status,
+        "firebase": push_status,
+        "community": community_status,
     }
+    source_labels = _build_source_labels(
+        triage_res,
+        weather_status,
+        action_plan_source,
+        maps_status,
+        len(community_insights),
+    )
 
     # Format whats_happening for backward compatibility with existing tests/clients
     if action_plan_source == "groq":
@@ -354,6 +475,8 @@ async def orchestrate_emergency_assessment(
         hospitals=hospitals,
         sos=sos_res,
         service_status=service_status,
+        community_insights=community_insights,
+        source_labels=source_labels,
         emergency_level=emergency_level,
         whats_happening=whats_happening,
         immediate_first_aid=action_plan.immediate_actions,

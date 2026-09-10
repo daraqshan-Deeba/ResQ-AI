@@ -1,0 +1,82 @@
+[
+  {
+    "name": "Gandhi Hospital",
+    "address": "Musheerabad, Hyderabad",
+    "lat": 17.424,
+    "lon": 78.502,
+    "phone": null,
+    "source": "manual_verified"
+  },
+  {
+    "name": "Osmania General Hospital",
+    "address": "Afzal Gunj, Hyderabad",
+    "lat": 17.3725,
+    "lon": 78.478,
+    "phone": null,
+    "source": "manual_verified"
+  },
+  {
+    "name": "Yashoda Hospitals, Secunderabad",
+    "address": "Alexander Road, Secunderabad",
+    "lat": 17.4395,
+    "lon": 78.4982,
+    "phone": null,
+    "source": "manual_verified"
+  },
+  {
+    "name": "KIMS Hospital",
+    "address": "Kondapur, Hyderabad",
+    "lat": 17.4601,
+    "lon": 78.3639,
+    "phone": null,
+    "source": "manual_verified"
+  },
+  {
+    "name": "Care Hospital, Banjara Hills",
+    "address": "Banjara Hills, Hyderabad",
+    "lat": 17.4239,
+    "lon": 78.4478,
+    "phone": null,
+    "source": "manual_verified"
+  },
+  {
+    "name": "NIMS Hospital",
+    "address": "Punjagutta, Hyderabad",
+    "lat": 17.4231,
+    "lon": 78.4512,
+    "phone": null,
+    "source": "manual_verified"
+  },
+  {
+    "name": "Apollo Hospitals, Jubilee Hills",
+    "address": "Jubilee Hills, Hyderabad",
+    "lat": 17.4213,
+    "lon": 78.4075,
+    "phone": null,
+    "source": "manual_verified"
+  },
+  {
+    "name": "Fernandez Hospital",
+    "address": "Bogulkunta, Hyderabad",
+    "lat": 17.3992,
+    "lon": 78.4891,
+    "phone": null,
+    "source": "manual_verified"
+  },
+  {
+    "name": "Continental Hospitals",
+    "address": "Gachibowli, Hyderabad",
+    "lat": 17.4432,
+    "lon": 78.3665,
+    "phone": null,
+    "source": "manual_verified"
+  },
+  {
+    "name": "MNJ Institute of Oncology",
+    "address": "Red Hills, Hyderabad",
+    "lat": 17.3925,
+    "lon": 78.4692,
+    "phone": null,
+    "source": "manual_verified"
+  }
+]

@@ -1,0 +1,82 @@
+[
+  {
+    "name": "Nallakunta Community Hall",
+    "address": "Nallakunta, Hyderabad",
+    "lat": 17.4035,
+    "lon": 78.4965,
+    "capacity": 120,
+    "occupied": 64
+  },
+  {
+    "name": "Govt High School, Adikmet",
+    "address": "Adikmet, Hyderabad",
+    "lat": 17.4058,
+    "lon": 78.501,
+    "capacity": 200,
+    "occupied": 180
+  },
+  {
+    "name": "Kavadiguda Function Hall",
+    "address": "Kavadiguda, Hyderabad",
+    "lat": 17.4102,
+    "lon": 78.489,
+    "capacity": 80,
+    "occupied": 12
+  },
+  {
+    "name": "Secunderabad Railway Colony Community Hall",
+    "address": "Railway Colony, Secunderabad",
+    "lat": 17.4395,
+    "lon": 78.4982,
+    "capacity": 150,
+    "occupied": 45
+  },
+  {
+    "name": "Malakpet Municipal School Shelter",
+    "address": "Malakpet, Hyderabad",
+    "lat": 17.3712,
+    "lon": 78.5115,
+    "capacity": 180,
+    "occupied": 92
+  },
+  {
+    "name": "Banjara Hills Community Centre",
+    "address": "Road No. 12, Banjara Hills",
+    "lat": 17.4239,
+    "lon": 78.4478,
+    "capacity": 100,
+    "occupied": 28
+  },
+  {
+    "name": "Kukatpally Govt School Relief Camp",
+    "address": "Kukatpally, Hyderabad",
+    "lat": 17.4948,
+    "lon": 78.3996,
+    "capacity": 250,
+    "occupied": 110
+  },
+  {
+    "name": "Charminar Ward Community Hall",
+    "address": "Old City, Hyderabad",
+    "lat": 17.3616,
+    "lon": 78.4747,
+    "capacity": 90,
+    "occupied": 55
+  },
+  {
+    "name": "Gachibowli Indoor Stadium Annex",
+    "address": "Gachibowli, Hyderabad",
+    "lat": 17.4401,
+    "lon": 78.3489,
+    "capacity": 400,
+    "occupied": 75
+  },
+  {
+    "name": "Uppal Community Hall",
+    "address": "Uppal, Hyderabad",
+    "lat": 17.4014,
+    "lon": 78.5582,
+    "capacity": 130,
+    "occupied": 40
+  }
+]

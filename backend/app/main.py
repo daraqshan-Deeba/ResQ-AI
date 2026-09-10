@@ -1,33 +1,60 @@
-from fastapi import FastAPI
-from fastapi.middleware.cors import CORSMiddleware
+from flask import Flask, jsonify
+from flask_cors import CORS
 
+from app.blueprints import (
+    assessment_bp,
+    chat_bp,
+    device_bp,
+    hospitals_bp,
+    knowledge_bp,
+    ml_bp,
+    reports_bp,
+    shelters_bp,
+    sos_bp,
+    traffic_bp,
+    transcribe_bp,
+    weather_bp,
+)
 from app.core.config import settings
 # Importing this triggers firebase_admin.initialize_app(...) once, at startup.
-from app.services import firebase_service  # noqa: F401
-from app.routers import assessment, chat, device, hospitals, reports, shelters, sos, weather
-
-app = FastAPI(title="ResQ AI Backend", version="0.2.0")
-
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=[
-        "http://127.0.0.1:5500",
-        "http://localhost:5500",
-    ],
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
-
-app.include_router(assessment.router)
-app.include_router(chat.router)
-app.include_router(weather.router)
-app.include_router(hospitals.router)
-app.include_router(shelters.router)
-app.include_router(reports.router)
-app.include_router(sos.router)
-app.include_router(device.router)
+from app.services import firebase_service, supabase_service  # noqa: F401
 
 
-@app.get("/health")
-async def health():
-    return {"status": "ok"}
+def create_app() -> Flask:
+    app = Flask(__name__)
+
+    CORS(
+        app,
+        resources={r"/api/*": {"origins": settings.cors_origin_list}},
+        supports_credentials=True,
+    )
+
+    app.register_blueprint(assessment_bp)
+    app.register_blueprint(chat_bp)
+    app.register_blueprint(weather_bp)
+    app.register_blueprint(hospitals_bp)
+    app.register_blueprint(shelters_bp)
+    app.register_blueprint(knowledge_bp)
+    app.register_blueprint(ml_bp)
+    app.register_blueprint(reports_bp)
+    app.register_blueprint(sos_bp)
+    app.register_blueprint(traffic_bp)
+    app.register_blueprint(transcribe_bp)
+    app.register_blueprint(device_bp)
+
+    @app.get("/health")
+    def health():
+        return jsonify(
+            {
+                "status": "ok",
+                "groq_model": settings.groq_model,
+                "groq_configured": settings.is_groq_available,
+                "openweather_configured": bool(settings.openweather_api_key.strip()),
+                "firebase_available": firebase_service.firebase_available,
+            }
+        )
+
+    return app
+
+
+app = create_app()

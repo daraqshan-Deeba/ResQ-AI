@@ -65,7 +65,6 @@ import json
 from unittest.mock import AsyncMock, patch
 
 import pytest
-from fastapi.testclient import TestClient
 
 from app.core.config import settings
 from app.main import app
@@ -908,7 +907,7 @@ def test_39_out_of_bounds_longitude_rejected():
 
 def test_40_router_assessment_returns_structured_orchestrated_result():
     """POST /api/assessment returns the unified AssessmentResult via FastAPI client."""
-    client = TestClient(app)
+    client = app.test_client()
 
     with patch("app.services.weather_service.get_weather_safe", new_callable=AsyncMock) as mock_w, \
          patch("app.services.action_planner_service.call_groq_safe", new_callable=AsyncMock) as mock_g, \
@@ -925,7 +924,7 @@ def test_40_router_assessment_returns_structured_orchestrated_result():
         })
 
     assert res.status_code == 200
-    data = res.json()
+    data = res.get_json()
 
     # Verify structured orchestrator fields
     assert "triage" in data

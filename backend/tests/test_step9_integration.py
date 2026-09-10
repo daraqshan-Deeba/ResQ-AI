@@ -24,7 +24,6 @@ import asyncio
 import json
 import pytest
 from unittest.mock import AsyncMock, patch, MagicMock
-from fastapi.testclient import TestClient
 
 from app.main import app
 from app.core.config import settings
@@ -40,7 +39,7 @@ from app.models.schemas import (
 )
 from app.services import emergency_orchestrator, firebase_service, triage_service
 
-client = TestClient(app)
+client = app.test_client()
 
 
 def _run(coro):
@@ -116,7 +115,7 @@ def test_scenario_a_normal_emergency_assessment():
         })
 
     assert res.status_code == 200
-    data = res.json()
+    data = res.get_json()
 
     # Category and severity
     assert data["triage"]["category"] == "flooding"
@@ -150,7 +149,7 @@ def test_scenario_b_groq_unavailable():
         })
 
     assert res.status_code == 200
-    data = res.json()
+    data = res.get_json()
 
     assert data["triage"]["category"] == "snakebite"
     assert data["emergency_level"] == "Critical"  # deterministic rule for snakebite
@@ -181,7 +180,7 @@ def test_scenario_c_weather_unavailable():
         })
 
     assert res.status_code == 200
-    data = res.json()
+    data = res.get_json()
 
     assert data["weather"]["status"] == "timeout"
     assert data["service_status"]["weather"] == "timeout"
@@ -211,7 +210,7 @@ def test_scenario_d_maps_unavailable_no_fake_hospitals():
         })
 
     assert res.status_code == 200
-    data = res.json()
+    data = res.get_json()
 
     assert data["hospitals"] == []
     assert data["service_status"]["maps"] == "network_error"
@@ -237,7 +236,7 @@ def test_scenario_e_firebase_unavailable_assessment_and_sos():
         # SOS returns degraded status with guidance
         res_sos = client.post("/api/sos", json={"lat": 17.3850, "lon": 78.4867})
         assert res_sos.status_code == 200
-        sos_body = res_sos.json()
+        sos_body = res_sos.get_json()
         assert sos_body["status"] == "degraded"
         assert sos_body["event_id"] is None
         assert "112" in sos_body["message"]
@@ -267,7 +266,7 @@ def test_scenario_f_fcm_failure_after_persistence(monkeypatch):
     })
 
     assert res.status_code == 200
-    body = res.json()
+    body = res.get_json()
 
     assert body["status"] == "recorded"
     assert body["event_id"] == "sos-persisted-123"
@@ -303,7 +302,7 @@ def test_scenario_g_successful_sos(monkeypatch):
     })
 
     assert res.status_code == 200
-    body = res.json()
+    body = res.get_json()
 
     assert body["status"] == "recorded"
     assert body["event_id"] == "sos-event-999"
@@ -321,22 +320,22 @@ def test_scenario_h_invalid_requests_rejected_with_400():
     # 1. Empty description
     r1 = client.post("/api/assessment", json={"description": ""})
     assert r1.status_code == 400
-    assert "empty" in r1.json()["detail"].lower()
+    assert "empty" in r1.get_json()["detail"].lower()
 
     # 2. Excessively long description (> 5000 chars)
     r2 = client.post("/api/assessment", json={"description": "a" * 5001})
     assert r2.status_code == 400
-    assert "5000" in r2.json()["detail"]
+    assert "5000" in r2.get_json()["detail"]
 
     # 3. Latitude without longitude
     r3 = client.post("/api/assessment", json={"description": "Valid incident", "lat": 17.0})
     assert r3.status_code == 400
-    assert "together" in r3.json()["detail"].lower()
+    assert "together" in r3.get_json()["detail"].lower()
 
     # 4. Longitude without latitude
     r4 = client.post("/api/assessment", json={"description": "Valid incident", "lon": 78.0})
     assert r4.status_code == 400
-    assert "together" in r4.json()["detail"].lower()
+    assert "together" in r4.get_json()["detail"].lower()
 
     # 5. Invalid latitude (> 90)
     r5 = client.post("/api/assessment", json={"description": "Valid incident", "lat": 95.0, "lon": 78.0})
@@ -349,7 +348,7 @@ def test_scenario_h_invalid_requests_rejected_with_400():
     # 7. SOS requested without coordinates
     r7 = client.post("/api/assessment", json={"description": "Valid incident", "request_sos": True})
     assert r7.status_code == 400
-    assert "coordinates" in r7.json()["detail"].lower()
+    assert "coordinates" in r7.get_json()["detail"].lower()
 
 
 # ===========================================================================
@@ -419,7 +418,7 @@ def test_scenario_k_and_p_contract_and_backward_compatibility():
         })
 
     assert res.status_code == 200
-    data = res.json()
+    data = res.get_json()
 
     # Required structured fields
     structured_keys = ["triage", "weather", "action_plan", "confidence", "hospitals", "service_status", "sos"]
@@ -475,7 +474,7 @@ def test_scenario_n_and_o_privacy_invariants():
         })
 
     assert res.status_code == 200
-    data = res.json()
+    data = res.get_json()
 
     # Maps service was never called
     mock_m.assert_not_called()

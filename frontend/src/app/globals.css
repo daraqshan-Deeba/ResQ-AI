@@ -1,0 +1,83 @@
+@import "tailwindcss";
+
+:root {
+  --bg: #020617;
+  --surface: #0b1220;
+  --glass: rgba(15, 23, 42, 0.55);
+  --border: rgba(148, 163, 184, 0.14);
+  --primary: #2563eb;
+  --accent: #06b6d4;
+  --accent-soft: #22d3ee;
+  --danger: #ef4444;
+  --danger-soft: #f87171;
+  --muted: #94a3b8;
+}
+
+@theme inline {
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}
+
+body {
+  background: var(--bg);
+  color: #f1f5f9;
+  font-family: var(--font-geist-sans), system-ui, sans-serif;
+}
+
+.glass-card {
+  background: var(--glass);
+  border: 1px solid var(--border);
+  backdrop-filter: blur(20px);
+  border-radius: 20px;
+  box-shadow: 0 8px 32px rgba(2, 6, 23, 0.55);
+}
+
+.text-gradient {
+  background: linear-gradient(90deg, #3b82f6, var(--accent), var(--accent-soft));
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.mono-tag {
+  font-family: var(--font-geist-mono), monospace;
+  font-size: 12px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  padding: 4px 10px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.badge.safe { background: rgba(34, 197, 94, 0.15); color: #86efac; }
+.badge.watch { background: rgba(245, 158, 11, 0.15); color: #fcd34d; }
+.badge.warning { background: rgba(249, 115, 22, 0.15); color: #fdba74; }
+.badge.critical { background: rgba(239, 68, 68, 0.15); color: var(--danger-soft); }
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border-radius: 16px;
+  padding: 14px 24px;
+  font-weight: 500;
+  font-size: 15px;
+  border: none;
+  cursor: pointer;
+  transition: transform 0.15s ease;
+}
+
+.btn:hover { transform: scale(1.02); }
+.btn-primary { background: var(--primary); color: white; box-shadow: 0 0 40px rgba(37, 99, 235, 0.25); }
+.btn-outline { background: var(--glass); border: 1px solid var(--border); color: #e2e8f0; }
+.btn-danger { background: var(--danger); color: white; box-shadow: 0 0 40px rgba(239, 68, 68, 0.3); }

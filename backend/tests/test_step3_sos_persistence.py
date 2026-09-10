@@ -19,8 +19,6 @@ Test inventory (10 tests):
 
 import pytest
 from unittest.mock import MagicMock, patch
-from fastapi.testclient import TestClient
-
 from app.main import app
 from app.services import firebase_service
 
@@ -53,11 +51,11 @@ def test_t1_firestore_ok_fcm_ok(monkeypatch):
         Notification=MagicMock(),
     ))
 
-    client = TestClient(app)
+    client = app.test_client()
     res = client.post("/api/sos", json={"lat": 17.385, "lon": 78.4867, "situation": "Flooding"})
 
     assert res.status_code == 200
-    body = res.json()
+    body = res.get_json()
     assert body["status"] == "recorded"
     assert body["notification_status"] == "notification_accepted"
     assert body["event_id"] is not None
@@ -89,11 +87,11 @@ def test_t2_firestore_ok_fcm_fails(monkeypatch):
     monkeypatch.setattr(firebase_service, "db", db)
     monkeypatch.setattr(firebase_service, "messaging", mock_messaging)
 
-    client = TestClient(app)
+    client = app.test_client()
     res = client.post("/api/sos", json={"lat": 17.385, "lon": 78.4867})
 
     assert res.status_code == 200
-    body = res.json()
+    body = res.get_json()
     assert body["status"] == "recorded"
     assert body["notification_status"] == "notification_failed"
     assert body["event_id"] is not None
@@ -131,11 +129,11 @@ def test_t3_firestore_ok_fcm_disabled(monkeypatch):
     monkeypatch.setattr(firebase_service, "create_sos_record", patched_create)
     monkeypatch.setattr(firebase_service, "update_sos_record", lambda eid, upd: ref.update(upd))
 
-    client = TestClient(app)
+    client = app.test_client()
     res = client.post("/api/sos", json={"lat": 17.385, "lon": 78.4867})
 
     assert res.status_code == 200
-    body = res.json()
+    body = res.get_json()
     assert body["status"] == "recorded"
     assert body["notification_status"] == "notification_disabled"
     assert body["event_id"] is not None
@@ -149,11 +147,11 @@ def test_t4_firestore_unavailable(monkeypatch):
     monkeypatch.setattr(firebase_service, "firebase_available", False)
     monkeypatch.setattr(firebase_service, "db", None)
 
-    client = TestClient(app)
+    client = app.test_client()
     res = client.post("/api/sos", json={"lat": 17.385, "lon": 78.4867})
 
     assert res.status_code == 200
-    body = res.json()
+    body = res.get_json()
     assert body["status"] == "degraded"
     assert body["notification_status"] == "notification_disabled"
     assert body.get("event_id") is None
@@ -175,11 +173,11 @@ def test_t5_firestore_write_raises(monkeypatch):
     monkeypatch.setattr(firebase_service, "firebase_available", True)
     monkeypatch.setattr(firebase_service, "db", MagicMock())
 
-    client = TestClient(app)
+    client = app.test_client()
     res = client.post("/api/sos", json={"lat": 17.385, "lon": 78.4867})
 
     assert res.status_code == 200
-    body = res.json()
+    body = res.get_json()
     assert body["status"] == "degraded"
 
 
@@ -202,12 +200,12 @@ def test_t6_update_raises_after_fcm_failure(monkeypatch):
     monkeypatch.setattr(firebase_service, "db", db)
     monkeypatch.setattr(firebase_service, "messaging", mock_messaging)
 
-    client = TestClient(app)
+    client = app.test_client()
     res = client.post("/api/sos", json={"lat": 17.385, "lon": 78.4867})
 
     # Still 200 — the original create succeeded; update failure is swallowed
     assert res.status_code == 200
-    body = res.json()
+    body = res.get_json()
     # Status should still be recorded (event was created)
     assert body["status"] == "recorded"
     assert body["notification_status"] == "notification_failed"
@@ -230,11 +228,11 @@ def test_t7_event_id_consistency(monkeypatch):
     monkeypatch.setattr(firebase_service, "db", db)
     monkeypatch.setattr(firebase_service, "messaging", mock_messaging)
 
-    client = TestClient(app)
+    client = app.test_client()
     res = client.post("/api/sos", json={"lat": 17.385, "lon": 78.4867})
 
     assert res.status_code == 200
-    assert res.json()["event_id"] == expected_id
+    assert res.get_json()["event_id"] == expected_id
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -253,7 +251,7 @@ def test_t8_timestamps_on_create(monkeypatch):
     monkeypatch.setattr(firebase_service, "db", db)
     monkeypatch.setattr(firebase_service, "messaging", mock_messaging)
 
-    client = TestClient(app)
+    client = app.test_client()
     res = client.post("/api/sos", json={"lat": 17.385, "lon": 78.4867})
     assert res.status_code == 200
 
@@ -284,11 +282,11 @@ def test_t9_sanitised_error_response(monkeypatch):
     monkeypatch.setattr(firebase_service, "db", db)
     monkeypatch.setattr(firebase_service, "messaging", mock_messaging)
 
-    client = TestClient(app)
+    client = app.test_client()
     res = client.post("/api/sos", json={"lat": 17.385, "lon": 78.4867})
 
     assert res.status_code == 200
-    body = res.json()
+    body = res.get_json()
     # The response body itself must not contain the raw exception string
     body_text = str(body)
     assert "secret_token" not in body_text
@@ -309,7 +307,7 @@ def test_t10_explicit_confirmation_preserved():
     without explicit parameters — in practice this means no frontend auto-trigger
     can succeed without a user-submitted body.
     """
-    client = TestClient(app)
+    client = app.test_client()
     # No body → 422
     res = client.post("/api/sos", json={})
     assert res.status_code == 422

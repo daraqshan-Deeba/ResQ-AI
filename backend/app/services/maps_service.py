@@ -1,126 +1,90 @@
 """
-Wayfinder agent — nearby hospitals via Google Places, routing via Google
-Directions. Note: neither API exposes live bed availability; that number has
-to come from your own database (see shelters router) or a hospital partner
-feed. Here we surface name/address/distance only, honestly.
+Wayfinder agent — nearby hospitals from Supabase (preferred) or Firebase fallback.
+
+Hospital locations are stored in the `hospitals` table (seed via import scripts).
+Distance is computed locally with haversine — no Google Maps API required.
 """
 
 import logging
+import math
 
-import httpx
-
-from app.core.config import settings
 from app.models.schemas import HospitalOut, ServiceResult
+from app.services import database_service, supabase_service
 
 logger = logging.getLogger("resq.maps")
 
-PLACES_URL = "https://places.googleapis.com/v1/places:searchNearby"
-DIRECTIONS_URL = "https://maps.googleapis.com/maps/api/directions/json"
+
+def _haversine_km(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
+    radius_km = 6371.0
+    phi1, phi2 = math.radians(lat1), math.radians(lat2)
+    d_phi = math.radians(lat2 - lat1)
+    d_lambda = math.radians(lon2 - lon1)
+    a = math.sin(d_phi / 2) ** 2 + math.cos(phi1) * math.cos(phi2) * math.sin(d_lambda / 2) ** 2
+    return radius_km * 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
+
+
+def _directory_provider() -> str:
+    return "supabase_directory" if supabase_service.supabase_available else "firebase_directory"
 
 
 async def get_nearby_hospitals_safe(
     lat: float, lon: float, radius_m: int = 5000
 ) -> ServiceResult[list[HospitalOut]]:
-    api_key = settings.google_maps_api_key
-    if not api_key or not api_key.strip():
-        logger.info("Google Maps API key not configured; hospital search disabled.")
+    if not database_service.hospitals_directory_available():
+        logger.info("Hospital directory not configured.")
         return ServiceResult(
             available=False,
             data=[],
             error_type="service_disabled",
-            detail="Google Maps/Places service is disabled or API key is not configured.",
+            detail="Hospital directory requires Supabase (or Firebase fallback).",
         )
-
-    body = {
-        "includedTypes": ["hospital"],
-        "maxResultCount": 10,
-        "locationRestriction": {
-            "circle": {"center": {"latitude": lat, "longitude": lon}, "radius": radius_m}
-        },
-    }
-    headers = {
-        "Content-Type": "application/json",
-        "X-Goog-Api-Key": api_key.strip(),
-        "X-Goog-FieldMask": "places.displayName,places.formattedAddress,places.location",
-    }
 
     try:
-        async with httpx.AsyncClient(timeout=10) as client:
-            resp = await client.post(PLACES_URL, json=body, headers=headers)
-            resp.raise_for_status()
-            data = resp.json()
+        rows = database_service.list_hospitals()
+        if not rows:
+            return ServiceResult(
+                available=False,
+                data=[],
+                error_type="not_found",
+                detail="No hospitals in database. Run hospital import scripts.",
+            )
 
+        default_source = "supabase" if supabase_service.supabase_available else "firebase"
         hospitals: list[HospitalOut] = []
-        for place in data.get("places", []):
-            loc = place.get("location", {})
+        for row in rows:
+            h_lat = row.get("lat")
+            h_lon = row.get("lon")
+            if h_lat is None or h_lon is None:
+                continue
+            distance_km = _haversine_km(lat, lon, float(h_lat), float(h_lon))
+            if distance_km * 1000 > radius_m:
+                continue
             hospitals.append(
                 HospitalOut(
-                    name=place.get("displayName", {}).get("text", "Unknown hospital"),
-                    address=place.get("formattedAddress"),
-                    lat=loc.get("latitude", lat),
-                    lon=loc.get("longitude", lon),
+                    name=row.get("name", "Hospital"),
+                    address=row.get("address"),
+                    lat=float(h_lat),
+                    lon=float(h_lon),
+                    distance_km=round(distance_km, 2),
+                    facility_type=row.get("facility_type"),
+                    source=row.get("source", default_source),
                 )
             )
-        return ServiceResult(available=True, data=hospitals)
 
-    except httpx.TimeoutException:
-        logger.warning("Timeout while connecting to Google Places.")
-        return ServiceResult(
-            available=False,
-            data=[],
-            error_type="timeout",
-            detail="Hospital lookup timed out.",
-        )
-    except httpx.HTTPStatusError as exc:
-        status = exc.response.status_code
-        logger.warning("Google Places returned HTTP %s.", status)
-        if status in (401, 403):
-            error_type = "auth_error"
-            detail = "Google Places authorization error."
-        elif status == 404:
-            error_type = "not_found"
-            detail = "Google Places resource not found."
-        elif status == 429:
-            error_type = "rate_limited"
-            detail = "Google Places rate limit exceeded. Please try again shortly."
-        elif status == 504:
-            error_type = "timeout"
-            detail = "Google Places gateway timed out."
-        elif status in (500, 502, 503):
-            error_type = "server_error"
-            detail = "Google Places service is temporarily unavailable."
-        else:
-            error_type = "server_error"
-            detail = f"Google Places responded with status {status}."
-        return ServiceResult(available=False, data=[], error_type=error_type, detail=detail)
-    except httpx.RequestError as exc:
-        logger.warning("Network error connecting to Google Places: %s", type(exc).__name__)
-        return ServiceResult(
-            available=False,
-            data=[],
-            error_type="network_error",
-            detail="Network error while connecting to Google Places.",
-        )
-    except (ValueError, KeyError, TypeError) as exc:
-        logger.error("Failed to parse Google Places response: %s", exc)
-        return ServiceResult(
-            available=False,
-            data=[],
-            error_type="parse_error",
-            detail="Malformed response received from Google Places.",
-        )
+        hospitals.sort(key=lambda h: h.distance_km or 999.0)
+        return ServiceResult(available=True, data=hospitals[:10])
+
     except Exception as exc:
-        logger.error("Unexpected error in maps service: %s", type(exc).__name__)
+        logger.error("Hospital lookup failed: %s", type(exc).__name__)
         return ServiceResult(
             available=False,
             data=[],
             error_type="server_error",
-            detail="An unexpected error occurred while searching nearby hospitals.",
+            detail="Failed to read hospitals from database.",
         )
 
 
 async def get_nearby_hospitals(lat: float, lon: float, radius_m: int = 5000) -> list[HospitalOut]:
-    """Legacy helper preserved for backward compatibility."""
     result = await get_nearby_hospitals_safe(lat, lon, radius_m)
     return result.data or []
 
@@ -128,86 +92,22 @@ async def get_nearby_hospitals(lat: float, lon: float, radius_m: int = 5000) -> 
 async def get_route_safe(
     origin_lat: float, origin_lon: float, dest_lat: float, dest_lon: float
 ) -> ServiceResult[dict]:
-    api_key = settings.google_maps_api_key
-    if not api_key or not api_key.strip():
-        logger.info("Google Maps API key not configured; routing disabled.")
-        return ServiceResult(
-            available=False,
-            data={},
-            error_type="service_disabled",
-            detail="Google Directions service is disabled or API key is not configured.",
-        )
-
-    params = {
-        "origin": f"{origin_lat},{origin_lon}",
-        "destination": f"{dest_lat},{dest_lon}",
-        "key": api_key.strip(),
-    }
-
-    try:
-        async with httpx.AsyncClient(timeout=10) as client:
-            resp = await client.get(DIRECTIONS_URL, params=params)
-            resp.raise_for_status()
-            data = resp.json()
-        return ServiceResult(available=True, data=data)
-
-    except httpx.TimeoutException:
-        logger.warning("Timeout while connecting to Google Directions.")
-        return ServiceResult(
-            available=False,
-            data={},
-            error_type="timeout",
-            detail="Directions route lookup timed out.",
-        )
-    except httpx.HTTPStatusError as exc:
-        status = exc.response.status_code
-        logger.warning("Google Directions returned HTTP %s.", status)
-        if status in (401, 403):
-            error_type = "auth_error"
-            detail = "Google Directions authorization error."
-        elif status == 404:
-            error_type = "not_found"
-            detail = "Directions route not found."
-        elif status == 429:
-            error_type = "rate_limited"
-            detail = "Google Directions rate limit exceeded. Please try again shortly."
-        elif status == 504:
-            error_type = "timeout"
-            detail = "Google Directions gateway timed out."
-        elif status in (500, 502, 503):
-            error_type = "server_error"
-            detail = "Google Directions service is temporarily unavailable."
-        else:
-            error_type = "server_error"
-            detail = f"Google Directions responded with status {status}."
-        return ServiceResult(available=False, data={}, error_type=error_type, detail=detail)
-    except httpx.RequestError as exc:
-        logger.warning("Network error connecting to Google Directions: %s", type(exc).__name__)
-        return ServiceResult(
-            available=False,
-            data={},
-            error_type="network_error",
-            detail="Network error while connecting to Google Directions.",
-        )
-    except (ValueError, KeyError, TypeError) as exc:
-        logger.error("Failed to parse Google Directions response: %s", exc)
-        return ServiceResult(
-            available=False,
-            data={},
-            error_type="parse_error",
-            detail="Malformed response received from Google Directions.",
-        )
-    except Exception as exc:
-        logger.error("Unexpected error in routing service: %s", type(exc).__name__)
-        return ServiceResult(
-            available=False,
-            data={},
-            error_type="server_error",
-            detail="An unexpected error occurred while calculating route.",
-        )
+    """Routing uses external map apps; no Directions API is called."""
+    maps_link = (
+        f"https://maps.google.com/?saddr={origin_lat},{origin_lon}"
+        f"&daddr={dest_lat},{dest_lon}"
+    )
+    distance_km = _haversine_km(origin_lat, origin_lon, dest_lat, dest_lon)
+    return ServiceResult(
+        available=True,
+        data={
+            "maps_link": maps_link,
+            "distance_km": round(distance_km, 2),
+            "provider": _directory_provider(),
+        },
+    )
 
 
 async def get_route(origin_lat: float, origin_lon: float, dest_lat: float, dest_lon: float) -> dict:
-    """Legacy helper preserved for backward compatibility."""
     result = await get_route_safe(origin_lat, origin_lon, dest_lat, dest_lon)
     return result.data or {}

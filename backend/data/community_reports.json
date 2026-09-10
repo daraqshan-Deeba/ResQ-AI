@@ -1,0 +1,110 @@
+[
+  {
+    "area": "Banjara Hills",
+    "message": "Road accident near Road No. 12 junction. Two cars involved, traffic moving slowly.",
+    "reporter_name": "Local resident",
+    "verified": false
+  },
+  {
+    "area": "Kukatpally",
+    "message": "Heavy traffic congestion on NH65 due to waterlogging after rain.",
+    "reporter_name": null,
+    "verified": false
+  },
+  {
+    "area": "Secunderabad",
+    "message": "Road under construction near Paradise metro station. One lane closed.",
+    "reporter_name": "Commuter",
+    "verified": true
+  },
+  {
+    "area": "Malakpet",
+    "message": "Motorcycle accident reported near the flyover. Ambulance on scene.",
+    "reporter_name": null,
+    "verified": false
+  },
+  {
+    "area": "Gachibowli",
+    "message": "Slow traffic on ORR service road. Standstill for 20 minutes.",
+    "reporter_name": "Driver",
+    "verified": false
+  },
+  {
+    "area": "Nallakunta",
+    "message": "Street flooding after drain overflow. Cars stranded in knee-deep water.",
+    "reporter_name": null,
+    "verified": true
+  },
+  {
+    "area": "Adikmet",
+    "message": "Live wire reported down near standing water after storm. Area blocked.",
+    "reporter_name": "Shop owner",
+    "verified": false
+  },
+  {
+    "area": "Charminar",
+    "message": "Roof partially collapsed on old building. Debris on road, avoid the lane.",
+    "reporter_name": null,
+    "verified": false
+  },
+  {
+    "area": "HITEC City",
+    "message": "Road work and digging on main avenue. Expect delays during peak hours.",
+    "reporter_name": "Office worker",
+    "verified": true
+  },
+  {
+    "area": "Uppal",
+    "message": "Multi-vehicle collision on highway exit. Police directing traffic.",
+    "reporter_name": null,
+    "verified": false
+  },
+  {
+    "area": "Kondapur",
+    "message": "Water entering ground-floor shops. Street underwater near metro pillar.",
+    "reporter_name": "Tenant",
+    "verified": false
+  },
+  {
+    "area": "Musheerabad",
+    "message": "Snake sighting near flooded park path. Use caution walking at night.",
+    "reporter_name": null,
+    "verified": false
+  },
+  {
+    "area": "LB Nagar",
+    "message": "Bus breakdown causing traffic jam on main road.",
+    "reporter_name": "Passenger",
+    "verified": false
+  },
+  {
+    "area": "Miyapur",
+    "message": "Construction barricades narrowing both lanes near junction.",
+    "reporter_name": null,
+    "verified": true
+  },
+  {
+    "area": "Tolichowki",
+    "message": "Car hit pedestrian at crossing. Heavy bleeding reported, need ambulance.",
+    "reporter_name": "Witness",
+    "verified": false
+  },
+  {
+    "area": "Abids",
+    "message": "Cyclone-strength winds damaged shop shutters. Glass on footpath.",
+    "reporter_name": null,
+    "verified": false
+  },
+  {
+    "area": "Dilsukhnagar",
+    "message": "Gridlock near metro station after evening rain. Avoid if possible.",
+    "reporter_name": "Commuter",
+    "verified": false
+  },
+  {
+    "area": "Shamirpet",
+    "message": "Tree fallen across road after storm. Single lane passable only.",
+    "reporter_name": null,
+    "verified": true
+  }
+]

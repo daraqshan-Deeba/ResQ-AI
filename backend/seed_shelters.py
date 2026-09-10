@@ -1,11 +1,9 @@
 """
-Run once to seed a few example shelters into Firestore so the dashboard has
-something real to show. Replace with your actual verified shelter list
-before going live.
+Run once to seed example shelters into Supabase (or Firestore fallback).
 
     python seed_shelters.py
 """
-from app.services import firebase_service
+from app.services import database_service
 
 SAMPLE_SHELTERS = [
     dict(name="Nallakunta Community Hall", address="Nallakunta, Hyderabad",
@@ -18,5 +16,5 @@ SAMPLE_SHELTERS = [
 
 if __name__ == "__main__":
     for row in SAMPLE_SHELTERS:
-        firebase_service.add_shelter(row)
-    print(f"Seeded {len(SAMPLE_SHELTERS)} shelters into Firestore.")
+        database_service.add_shelter(row)
+    print(f"Seeded {len(SAMPLE_SHELTERS)} shelters.")

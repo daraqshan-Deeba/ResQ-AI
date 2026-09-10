@@ -1,5 +1,10 @@
+from pathlib import Path
+
 from pydantic import AliasChoices, Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+_BACKEND_DIR = Path(__file__).resolve().parents[2]
+_BACKEND_ENV = _BACKEND_DIR / ".env"
 
 
 class Settings(BaseSettings):
@@ -11,9 +16,15 @@ class Settings(BaseSettings):
         ),
     )
     groq_model: str = Field(
-        default="llama-3.3-70b-versatile",
+        default="qwen/qwen3.6-27b",
         validation_alias=AliasChoices(
             "GROQ_MODEL", "GROK_MODEL", "groq_model", "grok_model"
+        ),
+    )
+    groq_whisper_model: str = Field(
+        default="whisper-large-v3",
+        validation_alias=AliasChoices(
+            "GROQ_WHISPER_MODEL", "groq_whisper_model"
         ),
     )
 
@@ -25,6 +36,12 @@ class Settings(BaseSettings):
         ),
     )
 
+    # TomTom Traffic (optional — live accidents / congestion near user)
+    tomtom_api_key: str = Field(
+        default="",
+        validation_alias=AliasChoices("TOMTOM_API_KEY", "tomtom_api_key"),
+    )
+
     # Google Maps Platform
     google_maps_api_key: str = Field(
         default="",
@@ -33,12 +50,27 @@ class Settings(BaseSettings):
         ),
     )
 
-    # Firebase (Firestore + Cloud Messaging)
+    # Firebase (FCM push + Firestore fallback)
     firebase_credentials_path: str = Field(
-        default="firebase-service-account.json",
+        default="",
         validation_alias=AliasChoices(
             "FIREBASE_CREDENTIALS_PATH", "firebase_credentials_path"
         ),
+    )
+    firebase_project_id: str = Field(
+        default="",
+        validation_alias=AliasChoices(
+            "FIREBASE_PROJECT_ID",
+            "NEXT_PUBLIC_FIREBASE_PROJECT_ID",
+        ),
+    )
+    firebase_client_email: str = Field(
+        default="",
+        validation_alias=AliasChoices("FIREBASE_CLIENT_EMAIL", "firebase_client_email"),
+    )
+    firebase_private_key: str = Field(
+        default="",
+        validation_alias=AliasChoices("FIREBASE_PRIVATE_KEY", "firebase_private_key"),
     )
     firebase_alert_topic: str = Field(
         default="resq_alerts",
@@ -62,12 +94,88 @@ class Settings(BaseSettings):
     )
 
     cors_origins: str = Field(
-        default="http://localhost:5500",
+        default="http://localhost:3000,http://127.0.0.1:3000",
         validation_alias=AliasChoices("CORS_ORIGINS", "cors_origins"),
     )
 
+    # Redis Agent Memory (chat session + semantic recall)
+    redis_agent_memory_api_key: str = Field(
+        default="",
+        validation_alias=AliasChoices(
+            "REDIS_AGENT_MEMORY_KEY",
+            "REDIS_AGENT_MEMORY_API_KEY",
+            "AGENT_MEMORY_API_KEY",
+        ),
+    )
+    redis_agent_memory_url: str = Field(
+        default="https://aws-us-east-1.memory.redis.io",
+        validation_alias=AliasChoices(
+            "REDIS_AGENT_MEMORY_URL",
+            "AGENT_MEMORY_URL",
+        ),
+    )
+    redis_agent_memory_store_id: str = Field(
+        default="",
+        validation_alias=AliasChoices(
+            "REDIS_AGENT_MEMORY_STORE_ID",
+            "AGENT_MEMORY_STORE_ID",
+        ),
+    )
+
+    # Supabase (Postgres persistence — preferred over Firestore when configured)
+    supabase_url: str = Field(
+        default="",
+        validation_alias=AliasChoices("SUPABASE_URL", "NEXT_PUBLIC_SUPABASE_URL"),
+    )
+    supabase_service_role_key: str = Field(
+        default="",
+        validation_alias=AliasChoices(
+            "SUPABASE_SERVICE_ROLE_KEY",
+            "SUPABASE_SECRET_KEY",
+        ),
+    )
+    supabase_anon_key: str = Field(
+        default="",
+        validation_alias=AliasChoices(
+            "SUPABASE_ANON_KEY",
+            "NEXT_PUBLIC_SUPABASE_ANON_KEY",
+        ),
+    )
+    postgres_url: str = Field(
+        default="",
+        validation_alias=AliasChoices("POSTGRES_URL", "POSTGRES_PRISMA_URL"),
+    )
+    postgres_url_non_pooling: str = Field(
+        default="",
+        validation_alias=AliasChoices(
+            "POSTGRES_URL_NON_POOLING",
+            "postgres_url_non_pooling",
+        ),
+    )
+    supabase_storage_bucket: str = Field(
+        default="resq-assets",
+        validation_alias=AliasChoices(
+            "SUPABASE_STORAGE_BUCKET",
+            "supabase_storage_bucket",
+        ),
+    )
+    triage_ml_enabled: bool = Field(
+        default=True,
+        validation_alias=AliasChoices("TRIAGE_ML_ENABLED", "triage_ml_enabled"),
+    )
+
+    supabase_max_upload_bytes: int = Field(
+        default=5 * 1024 * 1024,
+        validation_alias=AliasChoices(
+            "SUPABASE_MAX_UPLOAD_BYTES",
+            "supabase_max_upload_bytes",
+        ),
+    )
+
     model_config = SettingsConfigDict(
-        env_file=".env", env_file_encoding="utf-8", extra="ignore"
+        env_file=str(_BACKEND_ENV),
+        env_file_encoding="utf-8",
+        extra="ignore",
     )
 
     @property
@@ -77,6 +185,18 @@ class Settings(BaseSettings):
     @property
     def is_groq_available(self) -> bool:
         return bool(self.groq_api_key and self.groq_api_key.strip())
+
+    @property
+    def is_agent_memory_available(self) -> bool:
+        return bool(
+            self.redis_agent_memory_api_key.strip()
+            and self.redis_agent_memory_store_id.strip()
+            and self.redis_agent_memory_url.strip()
+        )
+
+    @property
+    def is_supabase_available(self) -> bool:
+        return bool(self.supabase_url.strip() and self.supabase_service_role_key.strip())
 
 
 settings = Settings()

@@ -123,7 +123,11 @@ async def call_groq_safe(
         )
     except httpx.HTTPStatusError as exc:
         status = exc.response.status_code
-        logger.warning("Groq API returned HTTP %s.", status)
+        logger.warning(
+            "Groq API returned HTTP %s for model '%s'.",
+            status,
+            settings.groq_model,
+        )
         if status in (401, 403):
             error_type = "auth_error"
             detail = "AI service authorization error."
@@ -255,7 +259,12 @@ async def run_assessment(description: str, city: str, language: str = "English")
         return STATIC_FALLBACK_ASSESSMENT
 
 
-async def run_chat_reply(history: list[dict], message: str, city: str) -> str:
+async def run_chat_reply(
+    history: list[dict],
+    message: str,
+    city: str,
+    memory_context: str | None = None,
+) -> str:
     """Multi-turn call for the Assistant tab."""
     if not settings.groq_api_key or not settings.groq_api_key.strip():
         return (
@@ -263,15 +272,18 @@ async def run_chat_reply(history: list[dict], message: str, city: str) -> str:
             "For emergency assistance in India, call 112 (National Emergency) or 108 (Ambulance)."
         )
 
-    messages = [
-        {
-            "role": "system",
-            "content": (
-                f"You are ResQ AI's Responder — a calm monsoon-emergency assistant "
-                f"for {city}, India. Keep replies short, concrete, and actionable."
-            ),
-        }
+    system_parts = [
+        "You are ResQ AI's general information assistant — NOT the primary emergency "
+        "assessment system. Keep replies short and factual. Do not assign emergency "
+        "severity levels or replace professional emergency services.",
+        f"For urgent or life-threatening situations, always direct the user to the "
+        f"structured Emergency Assessment flow and to call 112 / 108 immediately.",
+        f"You may answer general monsoon-safety questions for {city}, India.",
     ]
+    if memory_context:
+        system_parts.append(memory_context)
+
+    messages = [{"role": "system", "content": "\n\n".join(system_parts)}]
     for turn in history:
         role = "user" if turn["role"] == "user" else "assistant"
         messages.append({"role": role, "content": turn["text"]})

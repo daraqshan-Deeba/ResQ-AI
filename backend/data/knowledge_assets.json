@@ -1,0 +1,50 @@
+[
+  {
+    "title": "Flood safety — general guidance",
+    "category": "flooding",
+    "area": "Hyderabad",
+    "content_text": "Move to higher ground immediately. Turn off electricity at the main breaker if safe to reach. Avoid walking or driving through moving water. Keep away from downed power lines near water. Do not walk through floodwater of unknown depth. Do not drive through flooded roads. Do not touch electrical equipment while wet. Escalate when water enters living spaces rapidly, anyone is trapped, or floodwater contacts electrical sources. Emergency: 112, Ambulance: 108, Disaster: 1070."
+  },
+  {
+    "title": "Electrocution hazard — general guidance",
+    "category": "electrocution",
+    "area": "Hyderabad",
+    "content_text": "Do not touch the person or the wire. Turn off power at the main source if accessible without contact. Call emergency help immediately. Keep others away. Never touch someone still in contact with a live source. Do not use water near the hazard. Do not move a downed wire yourself. Escalate when any person has been in contact with a live wire. Emergency: 112."
+  },
+  {
+    "title": "Injury and bleeding — general guidance",
+    "category": "injury",
+    "area": "Hyderabad",
+    "content_text": "Apply firm direct pressure to bleeding wounds. Keep the injured person still, especially with head or spinal injury suspected. Call emergency medical help. Do not move someone with suspected spinal injury unless immediate danger. Do not remove embedded objects. Escalate when bleeding won't stop, person is unconscious, or head/spinal injury suspected. Ambulance: 108."
+  },
+  {
+    "title": "Snakebite — general guidance",
+    "category": "snakebite",
+    "area": "Hyderabad",
+    "content_text": "Keep the person calm and still to slow venom spread. Immobilize the bitten limb at or below heart level. Get to a hospital with antivenom quickly. Note snake appearance if safe, but do not delay. Do not cut the wound, suck venom, or apply a tight tourniquet. Always seek professional medical evaluation for snakebite. Ambulance: 108."
+  },
+  {
+    "title": "Cyclone and high winds — general guidance",
+    "category": "cyclone",
+    "area": "Hyderabad",
+    "content_text": "Move away from windows. Secure loose outdoor items if time allows. Follow official evacuation guidance. Have emergency supplies and charged phone ready. Do not go outside during peak winds. Do not shelter under trees or weak structures. Escalate when structural damage occurs or evacuation orders are issued. Disaster helpline: 1070."
+  },
+  {
+    "title": "Structural damage — general guidance",
+    "category": "structural_damage",
+    "area": "Hyderabad",
+    "content_text": "Get away from damaged structures if safe to move. If trapped, tap on surfaces at intervals to signal location. Stay still to avoid further collapse. Do not re-enter damaged buildings. Do not use elevators. Escalate when anyone is trapped or structure shows continuing instability. Emergency: 112."
+  },
+  {
+    "title": "Road accident — general guidance",
+    "category": "accident",
+    "area": "Hyderabad",
+    "content_text": "Ensure scene safety before approaching — check for ongoing traffic danger. Call emergency help immediately. Check responsiveness if trained. Do not move injured persons unless immediate danger. Do not leave scene before help arrives if you are the reporting party. Escalate for any injury, unconsciousness, or significant vehicle damage. Police: 100, Ambulance: 108."
+  },
+  {
+    "title": "India emergency helplines (verify locally)",
+    "category": "general",
+    "area": "India",
+    "content_text": "112 National Emergency. 108 Ambulance. 100 Police. 101 Fire. 1070 Disaster Management Helpline. Numbers may change — verify with official sources before relying in production."
+  }
+]

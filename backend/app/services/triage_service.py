@@ -99,14 +99,19 @@ def _phrase(label: str, *phrases: str) -> tuple[str, re.Pattern]:
 
 
 _TIER1_RULES["flooding"] = [
+    _phrase("flood + rising water (multilingual)",
+            "ghar mein pani", "pani aa raha hai", "pani badh raha hai", "pani tez badh raha hai",
+            "intlo neeru", "neeru vastondi", "water enter avutundi",
+            "sadak pani mein doob"),
     _phrase("flood + rising water",
             "flood water", "floodwater", "flooding", "flash flood",
             "water entering", "water entering my house", "water entering the house",
             "water is entering", "rising water", "water level rising",
             "water is rising", "water has risen", "street underwater",
-            "street is flooded", "road is flooded", "roads flooded",
-            "trapped in water", "submerged", "inundated",
-            "heavy flooding", "severe flooding"),
+            "street is underwater", "street is flooded", "road is flooded", "roads flooded",
+            "trapped in water", "trapped by floodwater", "submerged", "inundated",
+            "heavy flooding", "severe flooding", "waterlogged street", "waterlogged",
+            "house is flooding", "drain overflowing"),
     # Extra guard: require "water" with "level" or "rising/entered" rather than
     # bare "water" — prevents "water bottle" from matching.
     _phrase("water level",
@@ -114,25 +119,35 @@ _TIER1_RULES["flooding"] = [
 ]
 
 _TIER1_RULES["electrocution"] = [
+    _phrase("electric shock (multilingual)",
+            "bijli ka jhatka", "current lag gaya", "current shock ayindi",
+            "live wire padipoyindi"),
     _phrase("electric shock",
             "electric shock", "electrocuted", "electrocution",
-            "live wire", "exposed wire", "live electrical wire",
+            "live wire", "live wire down", "exposed wire", "live electrical wire",
             "exposed electrical wire", "electric current",
             "sparks from wire", "wire sparking", "power line down",
-            "downed power line", "fallen power line",
-            "electric pole fell", "electricity shock"),
+            "power line fell", "downed power line", "downed power cable",
+            "fallen power line", "exposed wiring", "smell of burning wires",
+            "burning wires", "shocked by appliance",
+            "electric pole fell", "electricity shock", "transformer sparking"),
     # Negative guard: "wire transfer" and "barbed wire" should NOT match.
     # Implemented by using multi-word phrases above (no bare "wire" rule).
 ]
 
 _TIER1_RULES["injury"] = [
+    _phrase("injury (multilingual)",
+            "bahut bleeding", "haddi toot gayi", "khoon bah raha hai",
+            "chala bleeding avutundi", "bone break ayyindi"),
     _phrase("injury + bleeding",
             "deep cut", "severe cut", "serious cut",
-            "bleeding badly", "bleeding heavily", "heavy bleeding",
-            "broken bone", "fracture", "fractured",
+            "bleeding badly", "bleeding heavily", "heavy bleeding", "severe bleeding",
+            "someone is bleeding", "broken bone", "fracture", "fractured",
             "severe wound", "serious wound",
-            "unconscious", "not breathing", "stopped breathing",
-            "fell and injured", "seriously injured", "badly injured",
+            "unconscious", "unconscious person", "not breathing", "stopped breathing",
+            "fell and injured", "fell and is hurt", "someone fell and is hurt",
+            "seriously injured", "badly injured", "person not responding",
+            "lost a lot of blood",
             "head injury", "spinal injury", "internal bleeding",
             "bone sticking out", "compound fracture"),
     _phrase("injury (general)",
@@ -141,23 +156,34 @@ _TIER1_RULES["injury"] = [
 ]
 
 _TIER1_RULES["snakebite"] = [
+    _phrase("snake bite (multilingual)",
+            "saanp ne kaat", "paamu kadithindi", "snake bite ho gaya",
+            "snake bite ayyindi"),
     _phrase("snake bite",
             "snake bite", "snakebite", "bitten by a snake",
             "bitten by snake", "snake bit", "snake has bitten",
-            "snake attack", "venomous snake", "viper bite",
-            "cobra bite", "krait bite"),
+            "snake attack", "snake attacked", "venomous snake", "viper bite",
+            "cobra bite", "krait bite", "need antivenom", "fang marks"),
     # "snake plant" has no bite/bit/attack → will not match any pattern above.
 ]
 
 _TIER1_RULES["cyclone"] = [
+    _phrase("cyclone (multilingual)",
+            "tufan aa raha hai", "tez hawa chal rahi hai", "gali tez ga vistundi",
+            "cyclone warning vachindi"),
     _phrase("cyclone",
             "cyclone", "cyclonic storm", "severe cyclone",
             "hurricane", "super cyclone", "tropical cyclone",
-            "storm surge", "cyclone warning", "cyclone alert",
-            "severe storm approaching", "strong cyclonic winds"),
+            "storm surge", "cyclone warning", "cyclone alert", "cyclone alert issued",
+            "severe storm approaching", "strong cyclonic winds",
+            "roof blown off", "strong winds approaching", "trees falling due to wind",
+            "extreme wind speed", "wind damage to house", "storm approaching fast",
+            "storm approaching"),
 ]
 
 _TIER1_RULES["structural_damage"] = [
+    _phrase("structural damage (multilingual)",
+            "building gir gayi", "building collapse ayyindi", "chhat gir gayi"),
     _phrase("building collapse",
             "building collapse", "building collapsed", "building has collapsed",
             "building have collapsed", "building had collapsed",
@@ -177,11 +203,17 @@ _TIER1_RULES["structural_damage"] = [
             "floor collapsed", "floor has collapsed", "floor caved in",
             "slab fell", "pillar collapsed", "pillar has collapsed",
             "people trapped under rubble", "trapped under rubble",
-            "trapped under debris", "buried under rubble"),
+            "trapped under debris", "buried under rubble",
+            "wall came down", "structure is unstable",
+            "debris blocking the door", "trapped inside damaged building",
+            "wall crack spreading", "wall crack"),
 ]
 
 
 _TIER1_RULES["accident"] = [
+    _phrase("car accident (multilingual)",
+            "car accident ho gaya", "road accident ayyindi",
+            "road pe accident", "bike accident ho gaya"),
     _phrase("car accident",
             "car accident", "road accident", "vehicle accident",
             "traffic accident", "bike accident",
@@ -189,8 +221,9 @@ _TIER1_RULES["accident"] = [
             "truck accident", "bus accident",
             "collision", "vehicle collision", "head on collision",
             "rear end collision",
-            "hit by a car", "hit by a vehicle", "run over",
-            "met with an accident"),
+            "hit by a car", "hit by a vehicle", "pedestrian hit by vehicle",
+            "run over", "multi-car crash", "multi car crash", "accident on the highway",
+            "vehicle overturned", "met with an accident"),
     # "accident last year" is caught by the temporal guard below.
 ]
 
@@ -611,7 +644,22 @@ async def classify(description: str) -> TriageResult:
             logger.debug("Triage resolved at Tier 2: %s (%.2f)", t2.category, t2.confidence)
             return t2
     except Exception as exc:
-        logger.warning("Tier2: Unexpected error: %s. Continuing to Tier 3.", exc)
+        logger.warning("Tier2: Unexpected error: %s. Continuing to ML tier.", exc)
+
+    # ── Tier 2.5 — Multilingual ML classifier ─────────────────────────────
+    try:
+        from app.core.config import settings
+        from app.services.triage_ml_service import classify_ml
+
+        if settings.triage_ml_enabled:
+            t2ml = classify_ml(norm_text)
+            if t2ml is not None:
+                logger.debug(
+                    "Triage resolved at ML tier: %s (%.2f)", t2ml.category, t2ml.confidence
+                )
+                return t2ml
+    except Exception as exc:
+        logger.warning("Triage ML: Unexpected error: %s. Continuing to Tier 3.", exc)
 
     # ── Tier 3 ──────────────────────────────────────────────────────────────
     try:

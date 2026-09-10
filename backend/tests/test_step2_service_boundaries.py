@@ -1,8 +1,6 @@
 from unittest.mock import AsyncMock, MagicMock, patch
 import httpx
 import pytest
-from fastapi.testclient import TestClient
-
 from app.core.config import settings
 from app.main import app
 from app.models.schemas import AssessmentResponse, HospitalOut, WeatherSummary
@@ -158,32 +156,37 @@ def test_deterministic_risk_formula_preserved():
 
 @pytest.mark.anyio
 async def test_maps_hospital_success(monkeypatch):
-    monkeypatch.setattr(settings, "google_maps_api_key", "test-maps-key")
-    sample_places = {
-        "places": [
+    from app.services import database_service, supabase_service
+
+    monkeypatch.setattr(supabase_service, "supabase_available", True)
+    monkeypatch.setattr(database_service, "hospitals_directory_available", lambda: True)
+    monkeypatch.setattr(
+        database_service,
+        "list_hospitals",
+        lambda: [
             {
-                "displayName": {"text": "Gandhi Hospital"},
-                "formattedAddress": "Musheerabad, Hyderabad",
-                "location": {"latitude": 17.424, "longitude": 78.502},
+                "name": "Gandhi Hospital",
+                "address": "Musheerabad, Hyderabad",
+                "lat": 17.424,
+                "lon": 78.502,
+                "source": "supabase",
             }
-        ]
-    }
-    mock_resp = make_mock_response(status_code=200, json_data=sample_places)
-    with patch("httpx.AsyncClient.post", new_callable=AsyncMock) as mock_post:
-        mock_post.return_value = mock_resp
-        res = await maps_service.get_nearby_hospitals_safe(17.385, 78.486)
+        ],
+    )
+    res = await maps_service.get_nearby_hospitals_safe(17.385, 78.486)
 
     assert res.available is True
     assert len(res.data) == 1
     assert res.data[0].name == "Gandhi Hospital"
+    assert res.data[0].source == "supabase"
 
 
 @pytest.mark.anyio
 async def test_maps_hospital_disabled(monkeypatch):
-    monkeypatch.setattr(settings, "google_maps_api_key", "")
-    with patch("httpx.AsyncClient.post", new_callable=AsyncMock) as mock_post:
-        res = await maps_service.get_nearby_hospitals_safe(17.385, 78.486)
-        mock_post.assert_not_called()
+    from app.services import database_service
+
+    monkeypatch.setattr(database_service, "hospitals_directory_available", lambda: False)
+    res = await maps_service.get_nearby_hospitals_safe(17.385, 78.486)
 
     assert res.available is False
     assert res.error_type == "service_disabled"
@@ -191,54 +194,24 @@ async def test_maps_hospital_disabled(monkeypatch):
 
 
 @pytest.mark.anyio
-async def test_maps_hospital_timeout_and_network(monkeypatch):
-    monkeypatch.setattr(settings, "google_maps_api_key", "test-maps-key")
-    with patch("httpx.AsyncClient.post", new_callable=AsyncMock) as mock_post:
-        mock_post.side_effect = httpx.TimeoutException("Timeout")
-        res_timeout = await maps_service.get_nearby_hospitals_safe(17.385, 78.486)
-        assert res_timeout.available is False
-        assert res_timeout.error_type == "timeout"
-        assert res_timeout.data == []
+async def test_maps_hospital_empty_directory(monkeypatch):
+    from app.services import database_service, supabase_service
 
-        mock_post.side_effect = httpx.ConnectError("Network drop")
-        res_net = await maps_service.get_nearby_hospitals_safe(17.385, 78.486)
-        assert res_net.available is False
-        assert res_net.error_type == "network_error"
-        assert res_net.data == []
-
-
-@pytest.mark.anyio
-async def test_maps_hospital_auth_error(monkeypatch):
-    monkeypatch.setattr(settings, "google_maps_api_key", "test-maps-key")
-    mock_resp = make_mock_response(status_code=401)
-    with patch("httpx.AsyncClient.post", new_callable=AsyncMock) as mock_post:
-        mock_post.return_value = mock_resp
-        res = await maps_service.get_nearby_hospitals_safe(17.385, 78.486)
+    monkeypatch.setattr(supabase_service, "supabase_available", True)
+    monkeypatch.setattr(database_service, "hospitals_directory_available", lambda: True)
+    monkeypatch.setattr(database_service, "list_hospitals", lambda: [])
+    res = await maps_service.get_nearby_hospitals_safe(17.385, 78.486)
 
     assert res.available is False
-    assert res.error_type == "auth_error"
-    assert res.data == []
+    assert res.error_type == "not_found"
 
 
 @pytest.mark.anyio
-async def test_maps_route_success_and_failure(monkeypatch):
-    monkeypatch.setattr(settings, "google_maps_api_key", "test-maps-key")
-    # Success
-    mock_resp = make_mock_response(status_code=200, json_data={"routes": [{"summary": "Route 1"}]})
-    with patch("httpx.AsyncClient.get", new_callable=AsyncMock) as mock_get:
-        mock_get.return_value = mock_resp
-        res_ok = await maps_service.get_route_safe(17.1, 78.1, 17.2, 78.2)
-        assert res_ok.available is True
-        assert "routes" in res_ok.data
-
-    # Failure
-    mock_fail = make_mock_response(status_code=500)
-    with patch("httpx.AsyncClient.get", new_callable=AsyncMock) as mock_get:
-        mock_get.return_value = mock_fail
-        res_fail = await maps_service.get_route_safe(17.1, 78.1, 17.2, 78.2)
-        assert res_fail.available is False
-        assert res_fail.error_type == "server_error"
-        assert res_fail.data == {}
+async def test_maps_route_returns_link():
+    res = await maps_service.get_route_safe(17.1, 78.1, 17.2, 78.2)
+    assert res.available is True
+    assert "maps_link" in res.data
+    assert "distance_km" in res.data
 
 
 # ============================================================================
@@ -360,7 +333,7 @@ async def test_groq_chat_fallback_on_failure(monkeypatch):
 
 
 def test_router_weather_success_and_fallback(monkeypatch):
-    client = TestClient(app)
+    client = app.test_client()
     monkeypatch.setattr(settings, "openweather_api_key", "test-key")
 
     # Success
@@ -373,11 +346,11 @@ def test_router_weather_success_and_fallback(monkeypatch):
         mock_get.return_value = make_mock_response(200, sample_weather)
         res_w = client.get("/api/weather")
         assert res_w.status_code == 200
-        assert res_w.json()["temp_c"] == 29.0
+        assert res_w.get_json()["temp_c"] == 29.0
 
         res_r = client.get("/api/weather/risk")
         assert res_r.status_code == 200
-        assert res_r.json()["level"] == "safe"
+        assert res_r.get_json()["level"] == "safe"
 
     # Unavailable weather -> /api/weather returns 503, /api/weather/risk returns fallback baseline
     monkeypatch.setattr(settings, "openweather_api_key", "")
@@ -386,32 +359,34 @@ def test_router_weather_success_and_fallback(monkeypatch):
 
     res_r_fallback = client.get("/api/weather/risk")
     assert res_r_fallback.status_code == 200
-    assert res_r_fallback.json()["score"] == 18
-    assert res_r_fallback.json()["level"] == "safe"
+    assert res_r_fallback.get_json()["score"] == 18
+    assert res_r_fallback.get_json()["level"] == "safe"
 
 
 def test_router_hospitals_degraded_when_maps_unavailable(monkeypatch):
-    client = TestClient(app)
-    monkeypatch.setattr(settings, "google_maps_api_key", "")
+    from app.services import database_service
+
+    client = app.test_client()
+    monkeypatch.setattr(database_service, "hospitals_directory_available", lambda: False)
     res = client.get("/api/hospitals")
     assert res.status_code == 200
-    assert res.json() == []
+    assert res.get_json() == []
 
 
 def test_router_assessment_fallback_when_groq_unavailable(monkeypatch):
-    client = TestClient(app)
+    client = app.test_client()
     monkeypatch.setattr(settings, "groq_api_key", "")
     res = client.post("/api/assessment", json={"description": "My home is flooded"})
     assert res.status_code == 200
-    data = res.json()
+    data = res.get_json()
     assert "112" in " ".join(data["call_these_services"])
     assert "108" in " ".join(data["call_these_services"])
     assert "Live AI assessment service is currently unavailable" in data["whats_happening"]
 
 
 def test_router_chat_fallback_when_groq_unavailable(monkeypatch):
-    client = TestClient(app)
+    client = app.test_client()
     monkeypatch.setattr(settings, "groq_api_key", "")
     res = client.post("/api/chat", json={"history": [], "message": "Help"})
     assert res.status_code == 200
-    assert "112" in res.json()["reply"]
+    assert "112" in res.get_json()["reply"]

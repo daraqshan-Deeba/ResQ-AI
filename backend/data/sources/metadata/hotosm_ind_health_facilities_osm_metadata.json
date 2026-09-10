@@ -1,0 +1,15 @@
+{
+    "created": "2026-05-13T11:49:29.565030",
+    "description": "health_facilities (osm) feature-level metadata",
+    "format": "JSON",
+    "download_url": "https://production-raw-data-api.s3.amazonaws.com/ISO3/IND/health_facilities/hotosm_ind_health_facilities_osm_metadata.json",
+    "id": "31e2c3a0-bd60-485a-8d26-4a07f9f1f428",
+    "last_modified": "2026-05-13T11:49:29.230531",
+    "metadata_modified": "2026-05-15T11:19:08.352320",
+    "microdata": false,
+    "dataset_id": "eb18fd07-1656-4b5b-b865-aa2cb6a5c101",
+    "resource_type": "api",
+    "name": "hotosm_ind_health_facilities_osm_metadata.json",
+    "mimetype": null,
+    "size": "9.0K"
+}

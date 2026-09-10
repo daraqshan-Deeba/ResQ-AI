@@ -1,0 +1,2 @@
+# Requires Python 3.11+
+context-surfaces>=0.0.6

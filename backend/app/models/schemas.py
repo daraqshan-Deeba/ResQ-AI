@@ -136,6 +136,13 @@ class ConfidenceResult(BaseModel):
     limiting_factor: str = Field(..., description="Subsystem responsible for capping overall confidence")
 
 
+# ---------- Audio transcription ----------
+class TranscriptionResult(BaseModel):
+    text: str
+    language: str | None = None
+    model: str | None = None
+
+
 # ---------- Assessment (Responder / "Get Help Now") ----------
 class AssessmentRequest(BaseModel):
     description: str = Field(..., description="What the user typed or a preset filled in")
@@ -168,10 +175,17 @@ class ChatRequest(BaseModel):
     history: list[ChatMessage]
     message: str
     city: str | None = None
+    session_id: str | None = Field(
+        None, description="Redis Agent Memory session id for multi-turn recall"
+    )
+    actor_id: str | None = Field(
+        None, description="Stable user/device id for session attribution"
+    )
 
 
 class ChatResponse(BaseModel):
     reply: str
+    session_id: str | None = None
 
 
 # ---------- Weather / risk (Sentinel) ----------
@@ -197,7 +211,8 @@ class HospitalOut(BaseModel):
     lon: float
     distance_km: float | None = None
     address: str | None = None
-    source: str = "google_places"
+    facility_type: str | None = None
+    source: str = "supabase"
 
 
 class ShelterOut(BaseModel):
@@ -209,6 +224,39 @@ class ShelterOut(BaseModel):
     lat: float | None = None
     lon: float | None = None
     source: str = "manual"        # flag that this is admin-entered, not a live feed
+
+
+# ---------- Traffic / road disruptions ----------
+TrafficIncidentType = Literal[
+    "accident",
+    "construction",
+    "congestion",
+    "road_closure",
+    "community_report",
+]
+
+
+class TrafficIncident(BaseModel):
+    id: str
+    type: TrafficIncidentType
+    title: str
+    description: str
+    lat: float | None = None
+    lon: float | None = None
+    distance_km: float | None = None
+    severity: Literal["low", "moderate", "high"] = "moderate"
+    source: str
+    verified: bool = False
+
+
+class TrafficOverview(BaseModel):
+    congestion_level: Literal["light", "moderate", "heavy", "unknown"]
+    incident_count: int
+    incidents: list[TrafficIncident] = Field(default_factory=list)
+    radius_km: float
+    lat: float
+    lon: float
+    sources_used: list[str] = Field(default_factory=list)
 
 
 # ---------- Community reports ----------
@@ -224,6 +272,8 @@ class ReportOut(BaseModel):
     message: str
     verified: bool
     created_at: str
+    attachment_url: str | None = None
+    attachment_mime: str | None = None
 
 
 # ---------- SOS ----------
@@ -265,6 +315,22 @@ class SosResponse(BaseModel):
     message: str
 
 
+# ---------- Community context (Section 9.2 — orchestrator integration) ----------
+class CommunityInsight(BaseModel):
+    """Nearby or semantically relevant community-sourced information."""
+
+    model_config = ConfigDict(extra="ignore")
+
+    id: str
+    area: str
+    message: str
+    verified: bool = False
+    source: Literal["community_report", "knowledge_asset"] = "community_report"
+    attachment_url: str | None = None
+    similarity: float | None = None
+    created_at: str | None = None
+
+
 # ---------- Unified Emergency Orchestrator Result (Step 7) ----------
 class AssessmentResult(BaseModel):
     """Unified emergency assessment result assembled by the Emergency Orchestrator (Step 7).
@@ -283,6 +349,8 @@ class AssessmentResult(BaseModel):
     hospitals: list[HospitalOut] = Field(default_factory=list)
     sos: Optional[SosResponse] = None
     service_status: dict[str, str] = Field(default_factory=dict)
+    community_insights: list[CommunityInsight] = Field(default_factory=list)
+    source_labels: dict[str, str] = Field(default_factory=dict)
 
     # Backward-Compatible Legacy Fields
     emergency_level: str = "Moderate"

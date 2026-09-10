@@ -1,5 +1,8 @@
 # Python
 __pycache__/
+backend/data/models/*.joblib
+.pytest_cache/
+pytest-cache-files-*/
 *.py[cod]
 *.pyo
 
@@ -7,13 +10,29 @@ __pycache__/
 venv/
 .venv/
 
-# Environment variables
+# Environment variables (canonical: backend/.env)
 .env
 .env.*
 !.env.example
+backend/.env
+frontend/.env.local
+
+# Large raw source datasets (see backend/data/sources/README.md)
+backend/data/sources/**/*.kml
+backend/data/downloads/
+*.kml
 
 # Firebase / frontend secrets
 firebase-config.js
+frontend/.env.local
+client_secret*.json
+**/client_secret*.json
+firebase-service-account.json
+**/firebase-service-account.json
+
+# Next.js
+frontend/.next/
+frontend/node_modules/
 
 # IDE
 .vscode/

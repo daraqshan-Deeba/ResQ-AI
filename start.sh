@@ -9,37 +9,36 @@ echo "        ResQ AI Starting..."
 echo "======================================"
 
 echo ""
-echo "[1/2] Starting backend..."
+echo "[1/2] Starting Flask backend..."
 
 cd "$PROJECT_ROOT/backend"
 
-uvicorn app.main:app --reload --host 127.0.0.1 --port 8000 &
+python run.py &
 BACKEND_PID=$!
 
 echo "Backend started:"
-echo "http://127.0.0.1:8000"
-echo "Swagger:"
-echo "http://127.0.0.1:8000/docs"
+echo "http://127.0.0.1:8001"
+echo "Health:"
+echo "http://127.0.0.1:8001/health"
 
 echo ""
-echo "[2/2] Starting frontend..."
+echo "[2/2] Starting Next.js frontend..."
 
 cd "$PROJECT_ROOT/frontend"
 
-python -m http.server 5500 --bind 127.0.0.1 &
+npm run dev -- --hostname 127.0.0.1 --port 3000 &
 FRONTEND_PID=$!
 
 echo "Frontend started:"
-echo "http://127.0.0.1:5500/dashboard.html"
+echo "http://127.0.0.1:3000"
 
 echo ""
 echo "======================================"
 echo "        ResQ AI is running"
 echo "======================================"
 echo ""
-echo "Frontend : http://127.0.0.1:5500/dashboard.html"
-echo "Backend  : http://127.0.0.1:8000"
-echo "Swagger  : http://127.0.0.1:8000/docs"
+echo "Frontend : http://127.0.0.1:3000"
+echo "Backend  : http://127.0.0.1:8001"
 echo ""
 echo "Press Ctrl+C to stop both servers."
 

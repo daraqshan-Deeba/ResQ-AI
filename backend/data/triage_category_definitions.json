@@ -1,0 +1,110 @@
+{
+  "version": "1.0",
+  "updated": "2026-09-10",
+  "categories": {
+    "flooding": {
+      "label": "Flooding",
+      "definition": "Active water inundation threatening people or property — rising water indoors, submerged roads, flash floods, trapped in floodwater.",
+      "includes": [
+        "water entering home",
+        "submerged streets",
+        "flash flood",
+        "drain overflow flooding area"
+      ],
+      "excludes": [
+        "historical flood stories",
+        "news about distant floods",
+        "water bottle / drinking water"
+      ]
+    },
+    "electrocution": {
+      "label": "Electrocution / electrical hazard",
+      "definition": "Live electrical exposure — shocks, downed power lines, sparking wires, especially near water.",
+      "includes": [
+        "electric shock victim",
+        "live wire on ground",
+        "transformer sparking"
+      ],
+      "excludes": [
+        "barbed wire fence",
+        "wire transfer / unrelated 'wire' uses"
+      ]
+    },
+    "injury": {
+      "label": "Injury / medical trauma",
+      "definition": "Physical trauma requiring first aid — bleeding, fractures, head injury, unconsciousness.",
+      "includes": [
+        "severe bleeding",
+        "broken bone",
+        "head injury",
+        "person not responding"
+      ],
+      "excludes": [
+        "emotional hurt",
+        "past injuries without active emergency"
+      ]
+    },
+    "snakebite": {
+      "label": "Snakebite",
+      "definition": "Active or recent venomous snake bite requiring antivenom evaluation.",
+      "includes": [
+        "bitten by snake",
+        "fang marks with swelling",
+        "need antivenom"
+      ],
+      "excludes": [
+        "snake plant",
+        "historical snake stories without active bite"
+      ]
+    },
+    "cyclone": {
+      "label": "Cyclone / severe windstorm",
+      "definition": "Cyclone, hurricane, or severe wind event — storm surge, cyclone warnings, extreme winds damaging structures.",
+      "includes": [
+        "cyclone warning",
+        "storm surge",
+        "roof blown off by cyclone winds"
+      ],
+      "excludes": [
+        "normal breeze",
+        "documentary about cyclones"
+      ]
+    },
+    "structural_damage": {
+      "label": "Structural collapse",
+      "definition": "Building or structure failure — collapse, cave-in, people trapped under rubble.",
+      "includes": [
+        "building collapsed",
+        "roof caved in",
+        "trapped under debris"
+      ],
+      "excludes": [
+        "cosmetic wall cracks without danger",
+        "demolition work"
+      ]
+    },
+    "accident": {
+      "label": "Road / vehicle accident",
+      "definition": "Active traffic collision — vehicles crashed, pedestrian hit, serious road accident.",
+      "includes": [
+        "car accident",
+        "motorcycle collision",
+        "pedestrian hit by vehicle"
+      ],
+      "excludes": [
+        "accident happened years ago",
+        "minor parking bump without injury"
+      ]
+    },
+    "unclassified": {
+      "label": "Unclassified",
+      "definition": "No confident emergency category — general help requests, tests, historical reports, or ambiguous input.",
+      "includes": [
+        "app test messages",
+        "hypothetical questions",
+        "insufficient similarity to any category"
+      ],
+      "excludes": []
+    }
+  }
+}
