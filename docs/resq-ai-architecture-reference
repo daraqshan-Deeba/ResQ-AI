@@ -1,0 +1,446 @@
+# ResQ AI — Comprehensive Fix & Architecture Algorithm Reference
+
+**Purpose of this document:** This is a complete, code-free, algorithm-level reference for every fix, design decision, and open item discussed for the ResQ AI project. It exists so that anyone — human or AI — picking up this project can understand *what* needs to change, *why*, *in what order*, and *how* each piece behaves, without needing to read source code first. Every section describes a process: inputs, steps, decision points, outputs, and failure modes — not implementation syntax.
+
+**How to use this document:** Read Section 1 and 2 once, for context. After that, each fix in Sections 3–8 is self-contained — you can jump directly to the fix you're working on. Section 9 covers scope decisions that are not fixes but governance calls. Section 10 is deployment, deliberately parked. Section 11 ties everything together into a build order with dependency reasoning.
+
+---
+
+## Table of Contents
+
+1. Introduction & Document Purpose
+2. Guiding Principles Recap (Why These Fixes Matter)
+3. Fix 1 — Graceful Failure Handling Across External Services
+4. Fix 2 — Structured JSON Output for Action Planning
+5. Fix 3 — Tiered Triage Classification
+6. Fix 4 — Confidence Aggregation Algorithm
+7. Fix 5 — Emergency Orchestrator Algorithm
+8. Fix 6 — SOS Event Logging Algorithm
+9. Scope Governance Decisions (Voice, Community Reports, Chat Assistant)
+10. Deployment Considerations (Deliberately Parked)
+11. Build Sequencing & Dependency Reasoning
+12. Appendix — Threshold Tables, Data Contracts, Glossary
+
+---
+
+## 1. Introduction & Document Purpose
+
+ResQ AI is a short-lived, multi-agent emergency response prototype. Its documented architecture (an Emergency Orchestrator coordinating specialized agents) is significantly ahead of what has actually been implemented. The current codebase has three specific, identified structural gaps:
+
+1. External service calls (weather, maps, LLM) do not fail gracefully — they raise unhandled exceptions that surface as raw server errors.
+2. The LLM-based action-planning call produces unstructured, prose-formatted text that is parsed with regular expressions — a fragile approach with no confidence signal and duplicated severity logic.
+3. There is no Orchestrator at all — the frontend independently calls multiple backend endpoints and stitches their results together client-side, which is the responsibility the Orchestrator is supposed to own.
+
+Beyond these three structural gaps, several capability gaps exist (no discrete triage step, no confidence field anywhere in the system, no persisted SOS event log) and several scope-creep items exist (features built that were explicitly marked out-of-scope for the MVP).
+
+This document treats every one of these as a distinct problem with its own algorithm, while being explicit about how they depend on one another, so that fixing them happens in an order that avoids rework.
+
+---
+
+## 2. Guiding Principles Recap
+
+Every algorithm in this document is designed to satisfy a fixed set of principles established for this project. It's worth restating them here because every design decision below traces back to one of these six rules, and understanding *why* a rule exists prevents accidentally violating it while implementing a fix.
+
+### Principle 1 — One output, not ten
+The person using this system is, by definition, in a stressful situation. They should never have to synthesize multiple disconnected pieces of information themselves. Every specialized agent's output must flow into a single coordinating layer (the Orchestrator) which produces one final, prioritized response. This principle is the reason a standalone chat assistant that bypasses the Orchestrator is a problem, even if it's technically "working" — it creates a second source of truth the user has to reconcile themselves.
+
+### Principle 2 — Deterministic over generative for safety-critical logic
+Anything that decides *how severe* a situation is, *whether* to escalate, or *whether* to trigger SOS must be governed by fixed, auditable rules — not by an LLM's token-by-token judgment, which can vary between identical inputs and cannot be fully explained after the fact. LLMs are excellent at language — phrasing, summarizing, elaborating — and should be confined to that role. This principle is why triage classification should lean on deterministic or quasi-deterministic techniques (keyword rules, embedding similarity) rather than an LLM call, and why the risk score must remain the sole authority on severity rather than letting the LLM also produce an "emergency level."
+
+### Principle 3 — Explainability is mandatory
+No score or recommendation may be a black box. If the system says "this is a Warning-level flood risk," it must also be able to say "because rainfall intensity is at 82% and drainage capacity is a fixed 54%." This principle drives the entire design of the confidence aggregation algorithm (Fix 4) — a confidence label without a reason attached is not actually explainable, it's just another opaque number.
+
+### Principle 4 — Confidence must be visible
+Anywhere the system is inferring rather than measuring — classifying an emergency type from ambiguous text, generating advice from a language model, or working with partial data because an external service failed — that uncertainty must be surfaced to the user rather than hidden behind confident-sounding prose. This is the principle most violated by the current codebase, since no confidence field exists anywhere in the current schemas.
+
+### Principle 5 — This is decision support, not an authoritative warning system
+Nothing the system says should be phrased as an official declaration. Distinguishing AI-assisted guidance from verified, live, or official data is not a cosmetic labeling exercise — it's core to preventing a user from over-trusting a heuristic risk score or an LLM-generated suggestion during a genuine emergency.
+
+### Principle 6 — SOS requires explicit confirmation
+Location sharing and emergency escalation must never be automatic. A user must take a clear, deliberate action before their location is captured and transmitted. This principle is already correctly implemented in the current codebase and must be preserved through any changes to the SOS flow (Fix 6).
+
+---
+
+## 3. Fix 1 — Graceful Failure Handling Across External Services
+
+### 3.1 Why this fix exists and why it is first
+
+Every other fix in this document either directly or indirectly depends on external services (weather API, maps/places API, LLM API) behaving predictably when something goes wrong. If this fix is not done first, every subsequent fix has to independently reinvent error handling, and the eventual Orchestrator — whose entire job is to merge multiple service outputs into one response — has no reliable way to know which of its inputs succeeded and which failed. Doing this fix first means every fix built afterward can simply assume a predictable contract exists, rather than defensively coding against raw exceptions at every call site.
+
+### 3.2 The current failure mode
+
+At present, each of the three services that call an external API (weather, maps, LLM) follows the same pattern: make the HTTP call, and if the response indicates an error, allow that error to propagate upward as an unhandled exception. This means:
+
+- A momentary network blip becomes a full request failure instead of a degraded-but-partial response.
+- An expired or invalid API key produces the same crash as a genuine outage — there's no differentiation for diagnosis.
+- The user-facing error message is whatever generic failure text the web framework produces by default, which is neither actionable nor honest about what specifically went wrong.
+- There is no way for any calling code (a router, and eventually the Orchestrator) to distinguish "this service is temporarily down, proceed with a partial answer" from "this is a genuine bug, something is fundamentally broken."
+
+### 3.3 The algorithm: what every service call should do instead
+
+For every function that makes an external network call, the following procedure replaces the current "call and let it fail" approach:
+
+**Step 1 — Attempt the call inside a controlled boundary.**
+The network request is wrapped in a boundary that can intercept three distinct failure categories: a timeout (the external service took too long to respond), a request-level failure (the network itself failed — DNS resolution, connection refused, TLS failure), and an HTTP-status-level failure (the external service responded, but with an error status such as 401 unauthorized, 429 rate-limited, or 500 internal error).
+
+**Step 2 — Classify the failure, don't just detect it.**
+Each of the three categories above should be labeled distinctly rather than collapsed into one generic "it failed" state. The reason this matters: a 429 rate-limit failure means "try again later, possibly with backoff"; a 401 means "the API key is wrong or expired, this will not self-resolve"; a timeout means "the network or the external service is slow right now." These are operationally different situations even though they all currently produce the same crash. Distinguishing them costs nothing extra to implement but makes the eventual failure message — and any future retry logic — meaningfully more useful.
+
+**Step 3 — Construct a consistent "unavailable" result instead of raising.**
+Rather than letting the exception propagate, the function returns a structured result indicating: (a) that the service was unavailable, (b) which service this refers to (weather, maps, or the LLM), and (c) which failure category applied. This result has the same shape regardless of which of the three services produced it, so that any code consuming these results doesn't need service-specific handling logic — it can check "did this come back as unavailable, yes or no" using one universal check.
+
+**Step 4 — Preserve the successful path unchanged.**
+When the call succeeds, the function behaves exactly as it does today — parsing the response and returning the expected data shape. The only change is what happens on the failure path; the success path's logic, parsing, and output remain untouched. This minimizes the risk of the fix itself introducing new bugs into working code.
+
+**Step 5 — Push the decision of "what to do about it" up to the caller.**
+The service function's only job is to report what happened accurately. It is explicitly not the service function's job to decide what the user sees when a failure occurs — that decision belongs to whichever layer is calling it (today, a router; eventually, the Orchestrator). This separation matters because the correct user-facing behavior differs by context: a missing weather reading might mean "show the risk score with a caveat that live data was unavailable," while a missing LLM response might mean "show a static fallback message with emergency phone numbers." The service layer shouldn't be making that call, because it doesn't have visibility into the full picture the caller does.
+
+### 3.4 Applying the algorithm to each of the three services
+
+**Weather service:** This service's failure matters most because its output feeds directly into the deterministic risk score, which is your most safety-relevant deterministic output. If the weather call is unavailable, the risk score calculation cannot proceed with live data. The calling code needs to decide whether to fall back to a cached/default risk estimate (clearly labeled as such) or to omit the risk score and say so explicitly — but that decision-making is not this fix's concern; this fix only ensures the failure is reported cleanly rather than crashing.
+
+**Maps service:** This service has two distinct functions — hospital lookup and route calculation — and both should be wrapped independently, because a failure in one should not prevent the other from succeeding. If hospital lookup fails but the underlying network is fine, there is no reason route calculation (for a different purpose) should also be assumed broken; keeping the failure boundaries separate per function preserves partial functionality.
+
+**LLM service:** This one differs slightly from the other two in consequence: a missing weather reading degrades one number, but a missing LLM response means the user gets no generated guidance at all for their situation. Because of this asymmetry, the calling code for this specific service needs a genuine fallback message prepared in advance — something like a static reminder of emergency phone numbers — rather than simply omitting a field. This is a decision for the router/Orchestrator layer, but it's worth flagging here because the LLM service failing gracefully is necessary but not sufficient; the layer above it must also have a real answer ready for when this happens.
+
+### 3.5 Edge cases this algorithm needs to handle
+
+- **Partial JSON response:** an external API can return a 200-success status but a malformed or incomplete JSON body (e.g., a truncated response due to a network interruption mid-transfer). This should be treated as a failure, not allowed to crash during parsing — the classification step (3.2) should include a parse-failure category alongside timeout/network/HTTP-status failures.
+- **Slow-but-eventually-successful calls:** a call that takes 9 seconds against a 10-second timeout succeeds today but is operationally indistinguishable from "about to start failing intermittently." While this fix doesn't need to solve for this today, timeouts should be set deliberately (not left at arbitrary defaults) so that a genuinely slow user experience doesn't masquerade as success.
+- **Retry vs. fail-fast:** this algorithm deliberately does not include automatic retries. For a short-lived, low-traffic prototype, a single attempt with a clear failure report is simpler and more predictable than implementing retry-with-backoff logic, which is real complexity that this project's lifespan doesn't justify. This is a conscious scope boundary, not an oversight.
+
+### 3.6 What "done" looks like for this fix
+
+Every one of the three external-facing service functions can be called under a simulated failure condition (invalid key, unreachable host, artificially forced timeout) and, instead of crashing the request, returns a predictable, inspectable result that clearly states which service failed and why — with the calling router able to construct a sensible partial or fallback response instead of surfacing a raw framework error to the end user.
+
+---
+
+## 4. Fix 2 — Structured JSON Output for Action Planning
+
+### 4.1 Why this fix exists
+
+The LLM-based action-planning call currently asks the model to produce a specific, human-readable text format with labeled sections, which is then reconstructed into structured data using pattern-matching against that expected format. This approach has a structural weakness: the contract between "what the model was asked to produce" and "what the parsing logic expects to receive" is enforced only by the wording of the prompt, not by anything the system can verify. If the model deviates even slightly from the expected format — a missing colon, a reordered section, an extra blank line — the pattern-matching either fails silently (producing an empty result for that section, which is worse than an explicit error) or misattributes content to the wrong field.
+
+Beyond fragility, this format has no room for a confidence signal, and it currently allows the language model to independently state an emergency severity level — which directly duplicates and can contradict the deterministic risk score that is supposed to be the sole authority on severity, per Principle 2.
+
+### 4.2 The algorithm: how the output contract changes
+
+**Step 1 — Define the exact shape of the expected output as a strict, verifiable structure**, not a formatting convention. Every field the downstream system needs (a plain-language explanation of the situation, an ordered list of immediate first-aid actions, an ordered list of things to avoid, a list of services to contact, a list of items to carry, and a list of nearby help suggestions) is defined as a named field with a specific data type. Critically, an emergency-severity field is deliberately *not* included in this structure — severity comes exclusively from the deterministic risk calculation, described in Fix 1's weather service and unrelated to this LLM call.
+
+**Step 2 — Add a self-reported confidence field to the structure itself.**
+Rather than confidence being an afterthought bolted onto free text, the output structure includes a field where the model states its own confidence level (high, medium, or low) about the guidance it has generated, along with an optional short note explaining what specifically it's uncertain about. This is explicitly a weak signal — as discussed in the confidence design (see Fix 4) — but it needs a place to exist in the output at all before it can be aggregated with other signals.
+
+**Step 3 — Instruct the model to produce only this structure, nothing else.**
+The prompt should be explicit that the response must consist of exactly this structured data and nothing surrounding it — no introductory sentence, no explanation of what the model is about to do, no trailing commentary. This single instruction is what allows the parsing step to become trivial rather than fragile: if the model complies, the entire response can be interpreted directly as the structure, with no pattern-matching or section-extraction needed at all.
+
+**Step 4 — Validate on receipt, don't assume compliance.**
+Even with a clear instruction, a model can occasionally fail to comply — returning malformed structure, an incomplete set of fields, or accidentally wrapping the structure in explanatory text despite instructions not to. The receiving code must attempt to interpret the response strictly, and if that interpretation fails for any reason, this is treated as equivalent to the LLM service being "unavailable" from Fix 1 — the same fallback path applies. This means Fix 1 and Fix 2 share a failure-handling philosophy: a non-compliant response is not a partial success to be salvaged with clever parsing, it's a clean failure to be reported honestly.
+
+**Step 5 — Feed upstream context into the prompt as structured input, not just as raw user text.**
+Once the triage classifier (Fix 3) exists, its output — the identified emergency category, and the confidence of that classification — should be passed into this LLM call as part of its input context, so the model is generating advice *for a known category* rather than also being implicitly asked to figure out the category itself from scratch. This reduces the burden on the model, improves consistency of the guidance produced, and reinforces that category-determination happens once, upstream, deterministically — not redundantly inside this generative step.
+
+### 4.3 Why removing emergency-level from this call matters beyond tidiness
+
+This isn't just a data-modeling preference — it closes a real correctness gap. Under the current design, it is possible for the deterministic risk score to compute "Warning" while the LLM's free text simultaneously states "Critical," with no mechanism to reconcile the two, and no way for the user to know which one to trust. By removing the LLM's ability to state a severity level at all, there is exactly one authority for severity in the entire system, which is both simpler to reason about and directly satisfies Principle 2.
+
+### 4.4 Edge cases this algorithm needs to handle
+
+- **The model produces valid structure but with an empty or trivial value in some field** (for example, an empty first-aid list) — this should be distinguished from a parsing failure. It might be a legitimate case (some emergencies genuinely have no specific first-aid steps beyond calling for help) — the validation step should check for structural validity, not for the meaningfulness of the content, which is a different and harder problem outside this fix's scope.
+- **The model's self-reported confidence disagrees with what a human reviewer would expect** — for example, stating "high confidence" about a vague, generic response. This is an inherent limitation of self-reported confidence (models are known to be poorly calibrated about their own certainty) and is precisely why the confidence aggregation algorithm in Fix 4 treats this as only one of three inputs, capped by the others, rather than trusting it in isolation.
+- **Nearby-help suggestions referencing outdated or invented information** — since this portion of the output is not grounded in a live lookup, it should be treated, and labeled to the user, as a starting point to verify rather than a live directory. This is a data-honesty concern that existed before this fix and is not solved by it — worth flagging so it isn't mistaken for something this fix addresses.
+
+### 4.5 What "done" looks like for this fix
+
+The action-planning call reliably returns one interpretable structure per request, with no pattern-matching involved in extracting its fields; a non-compliant model response is caught and treated identically to a service failure rather than silently producing partially empty output; and no field in this structure claims to determine overall emergency severity — that determination is visibly and exclusively owned elsewhere in the system.
+
+---
+
+## 5. Fix 3 — Tiered Triage Classification
+
+### 5.1 Why this fix exists
+
+Currently, identifying what kind of emergency a user is describing is not a distinct step at all — it's implicitly folded into the single LLM call that also generates all the guidance text. This means every single assessment, no matter how clearly it matches a known category, costs a full generative LLM call just to figure out what's happening — an expensive and slow way to solve what is, for the vast majority of real inputs, a simple classification problem with a small, fixed set of possible answers. It also means classification (a safety-relevant decision, since it determines what advice is generated) is being made by the least deterministic, least explainable component in the system, in tension with Principle 2 and Principle 3.
+
+### 5.2 The overall shape of the algorithm: a cascade, not a single method
+
+Rather than choosing one classification technique and using it for every input, the algorithm is a cascade of increasingly expensive techniques, where each tier is only invoked if the previous tier could not confidently resolve the classification. This structure is deliberate: it means the fast, free, fully-explainable tiers handle the majority of real-world inputs, and the more expensive fallback tier is reserved for the genuinely ambiguous minority — which is both a cost optimization and, because each tier is more deterministic than the one after it, an alignment with Principle 2.
+
+### 5.3 Tier 1 — Rule-based keyword matching
+
+**What it does:** A small table maps specific keywords and phrases to emergency categories (for example, phrases associated with flooding, fire, electrical hazards, injuries, snakebite, cyclone/heavy rainfall, structural damage, and general accidents). The user's input text is checked against this table directly.
+
+**Algorithm:**
+1. Normalize the input text (lowercase, strip extraneous punctuation) so matching isn't sensitive to capitalization or minor formatting differences.
+2. Check the normalized text against each category's keyword/phrase list.
+3. If exactly one category's list produces a match, that category is returned with a high-confidence label, and the specific matched phrase is retained as the explanation (satisfying Principle 3 — the "why" is simply the literal phrase that matched).
+4. If zero categories match, or if multiple categories match with no clear single winner (for example, the text contains both flood-related and electrical-hazard-related phrases, which is itself meaningful — a flooded area with exposed wiring is a compound hazard), this tier does not attempt to guess. It passes the input to Tier 2 rather than forcing a low-quality single-category answer.
+
+**Why this tier is valuable despite its simplicity:** It costs nothing, executes instantly, and is completely auditable — anyone can look at the keyword table and understand exactly why a given input was classified the way it was. This is the strongest possible form of explainability, and it should be expected to correctly resolve a meaningful fraction of real inputs, especially ones using common, direct phrasing (which, empirically, is how the existing preset buttons already phrase things).
+
+**Its known limitation:** It cannot handle paraphrasing or indirect descriptions that don't happen to contain one of the enumerated keywords or phrases. This limitation is precisely what Tier 2 exists to address, and is not a flaw to be fixed within Tier 1 itself — Tier 1 is intentionally narrow in scope.
+
+### 5.4 Tier 2 — Embedding similarity classification
+
+**What it does:** Rather than requiring literal keyword overlap, this tier compares the *meaning* of the user's input against a small set of representative example sentences per category, using a numerical representation of meaning (an embedding) and a similarity measurement (cosine similarity) between the user's input and each representative example.
+
+**Setup, performed once (not per request):**
+1. For each emergency category, author a handful of natural-language example sentences that represent how a real user might describe that category of emergency in their own words — not keyword-stuffed, but naturally phrased, covering a range of phrasings and severities within that category.
+2. Convert every one of these example sentences into its embedding representation using a chosen embedding model, and keep these embeddings cached in memory for the lifetime of the running application, so this conversion happens once at startup, not on every incoming request.
+
+**Per-request algorithm:**
+1. Convert the user's input text into its embedding representation, using the same embedding model used for the canonical examples.
+2. Compute the similarity between the user's input embedding and every one of the canonical example embeddings across all categories.
+3. Identify the single highest-similarity match (the "best match") and note which category it belongs to, as well as the second-highest-similarity match overall (which may belong to the same or a different category) — this second value is needed for the margin check in the next step.
+4. Apply an absolute similarity threshold: if the best match's similarity score falls below a defined minimum, the input is not confidently classifiable by this tier at all, regardless of which category technically scored highest — this passes the input to Tier 3 rather than accepting a weak match.
+5. Apply a margin check: even if the best match clears the absolute threshold, check whether the best match's category is meaningfully more similar than the runner-up. If the gap between the best and second-best score is too small, the input is genuinely ambiguous between two categories (for example, a description that could plausibly be either a flood or an electrical hazard) and should not be resolved with false confidence — this also passes to Tier 3, or alternatively can be surfaced as a compound/ambiguous case depending on how the calling layer wants to handle it.
+6. If both checks pass, return the matched category along with a confidence level tied to how far above threshold the score was (for example, a score comfortably above threshold with a clear margin yields "high" confidence; a score just above threshold or with a narrow margin yields "medium" confidence) — and, for explainability, retain which specific canonical example sentence was the closest match, so the system can later say "this was matched most closely to: [example sentence]" rather than presenting the classification as an unexplained fact.
+
+**Why this tier fits the project's specific constraints:** It requires no collected training data — only a modest number of authored example sentences per category, which can be written in a single sitting and refined based on testing. It runs deterministically (the same input always produces the same embedding and thus the same similarity scores) and, if a locally-run embedding model is chosen rather than an external API, it introduces no network dependency, no per-call cost, and no additional point of failure into a safety-relevant classification step.
+
+**Its known limitation:** Its accuracy depends entirely on the quality and coverage of the authored canonical examples — an emergency category with poorly chosen or narrow examples will be classified less reliably than one with well-chosen, varied examples. This means the quality of Tier 2 is a function of upfront authoring effort, not an inherent property of the technique, and the canonical example set may need iteration after initial testing reveals gaps.
+
+### 5.5 Tier 3 — LLM classification fallback
+
+**What it does:** For the minority of inputs that neither Tier 1 nor Tier 2 could confidently resolve, a language model is asked to classify the input — but critically, asked to do *only* classification, returning a small structured result (the category and a self-assessed confidence), not the full generative guidance response. This keeps the cost of this fallback tier low even though it's the most expensive tier per-call, because the requested output is a few words of structured data, not a paragraph of prose.
+
+**Algorithm:**
+1. Construct a minimal prompt containing the user's input text and the closed list of possible categories (including an explicit "unclear/other" option, so the model isn't forced to pick a poor-fitting category when none genuinely apply).
+2. Request a small, strictly structured response containing the chosen category and a confidence self-assessment.
+3. Treat this response with an explicitly lower trust ceiling than Tier 1 or Tier 2 — because, per Principle 2, this is the least deterministic tier, its output confidence should be capped at "low" regardless of what the model itself claims, when it reaches downstream confidence aggregation. This is consistent with the general design decision (see Fix 4) that generative outputs shouldn't be trusted at face value for a safety-relevant judgment.
+4. If this call itself fails (network issue, malformed response), this is treated as an LLM-service failure per Fix 1's failure-handling pattern — the appropriate fallback at this point is to proceed with an explicit "unclassified" category and low confidence, rather than blocking the entire request on a classification step that has now failed twice.
+
+**Why this tier exists at all, given it's the least preferred technique:** Some fraction of real user descriptions will always be genuinely novel or ambiguous in ways that pre-authored examples and keyword lists cannot anticipate. Having a fallback tier prevents the system from simply refusing to respond to those cases; it accepts the cost and lower determinism of an LLM call specifically because the alternative — no classification at all for an edge case — is worse for a user in an actual emergency.
+
+### 5.6 What happens when no tier can confidently classify
+
+If even Tier 3 fails or produces very low confidence, the algorithm should not force a best-guess category. Instead, the classification result should be explicitly "unclassified," carrying low confidence, and the downstream Orchestrator (Fix 5) should be designed to still provide a generic, category-agnostic response (general safety guidance, relevant emergency contact numbers) rather than blocking entirely — an honest "we're not sure what this is, here's general guidance and here's how to reach help directly" is more useful and more honest than either refusing to respond or silently guessing.
+
+### 5.7 What "done" looks like for this fix
+
+A representative range of test inputs — direct keyword matches, paraphrased descriptions, and genuinely ambiguous or novel descriptions — each produce a category, a confidence level, and a human-readable explanation of why that category was chosen, with the majority of clear-cut inputs resolved by Tier 1 or Tier 2 without ever reaching the LLM fallback tier.
+
+---
+
+## 6. Fix 4 — Confidence Aggregation Algorithm
+
+### 6.1 Why this fix exists
+
+Confidence is not a single measurable quantity in this system — it's the combined result of at least three genuinely different kinds of uncertainty: how sure the system is about *what* emergency this is, how sure the system is that the *data* it used (weather, resource lookups) was actually live and current, and how sure the system should be about the *quality of generated advice*. Treating these as one blended number, or worse, not tracking them at all, hides exactly the kind of uncertainty Principle 4 requires to be visible.
+
+### 6.2 The three input signals, restated precisely
+
+**Signal A — Triage classification confidence.** This comes directly from Fix 3: whichever tier resolved the classification reports a confidence level (high, medium, or low), with Tier 1 matches generally being high confidence, Tier 2 matches ranging from medium to high depending on similarity margin, and Tier 3 matches being capped at low regardless of the model's self-report, per the reasoning in section 5.5.
+
+**Signal B — Data availability confidence.** This comes from Fix 1: for each external service the current request depended on (weather, maps/resources), whether that service returned live data or came back as "unavailable." This signal is a simple count or checklist, not a probabilistic judgment — either the weather call succeeded or it didn't, either the resource lookup succeeded or it didn't.
+
+**Signal C — Generated-content self-report.** This comes from Fix 2: the LLM's own stated confidence about the guidance it produced, included as a field in its structured output. As established, this signal is inherently the weakest and least trustworthy of the three, because models are known to be poorly calibrated about their own uncertainty — but it still carries some information (a model explicitly flagging "I'm not confident about this specific detail" is worth surfacing even if its silence when confident isn't fully trustworthy).
+
+### 6.3 The aggregation algorithm: weakest-link, not averaging
+
+**Step 1 — Reject averaging as the aggregation method.** An averaging approach (for example, treating "high, high, low" as netting out to "medium") would allow two strong signals to mask one weak one. In a safety-relevant context, this is the wrong failure mode — if the system doesn't actually know what emergency this is, the fact that the weather data happened to load successfully shouldn't pull the overall confidence back up. The overall confidence a user sees should reflect the single weakest link in the chain that produced their answer.
+
+**Step 2 — Compute the final confidence as the minimum across all three signals.** Concretely: take Signal A's level, Signal B's level (derived from how many, and which, dependent services failed), and Signal C's level, and set the final displayed confidence equal to whichever of the three is lowest. If any one signal is low, the final result is low, regardless of the other two. If none are low but at least one is medium, the final result is medium. Only if all three are high does the final result read as high.
+
+**Step 3 — Deriving Signal B's level from raw service outcomes.** Since Signal B isn't natively a "high/medium/low" judgment but a set of success/failure outcomes, it needs a translation rule: all relevant services succeeding maps to "high," exactly one relevant service being unavailable maps to "medium," and two or more relevant services being unavailable maps to "low." This translation should be documented as a specific, fixed rule rather than left to case-by-case judgment, so that it remains explainable and consistent.
+
+**Step 4 — Always attach a reason, not just the final label.** The most useful part of this algorithm isn't the label itself, but identifying which signal was responsible for capping it — this becomes the human-readable explanation attached to the confidence level (for example: "Could not confidently identify the emergency type from the description provided," or "Live weather data was unavailable, so this risk assessment may not reflect current conditions"). When multiple signals are simultaneously low, the reason given should reflect the most safety-relevant one first (classification uncertainty being more fundamental than a single missing data point, since it affects what advice was even generated).
+
+**Step 5 — This computation belongs to the Orchestrator, not to any individual agent.** None of the three input signals is available in full to any single component in isolation — the triage step doesn't know whether the weather call succeeded, and the weather service doesn't know how confident the classification was. Only the coordinating layer that has visibility into all three has enough information to perform this aggregation, which is why this logic is designed as a responsibility of the Orchestrator (Fix 5) rather than being pushed into any one service.
+
+### 6.4 Edge cases this algorithm needs to handle
+
+- **A request where a signal doesn't apply at all** — for example, if a user's location wasn't provided, so resource lookup was never attempted rather than attempted-and-failed. This should be treated distinctly from an actual failure (there's a difference between "we tried and it didn't work" and "we didn't have enough information to try") — the former is a data-availability confidence hit, the latter might instead be its own separate note to the user ("location wasn't provided, so nearby resources couldn't be searched") rather than being folded into the same confidence penalty.
+- **Multiple simultaneous low signals with different underlying causes** — the reason string should not become a run-on list of every possible caveat; it should surface the single most decision-relevant explanation, with any secondary caveats available in supporting detail rather than the headline reason, so the message stays readable in a high-stress moment.
+- **A "high confidence, high confidence, high confidence" outcome that still produces a wrong or unhelpful result** — this algorithm manages *known* uncertainty; it cannot detect or account for a failure mode where every component individually reports success but the combination is still inappropriate for the actual situation. This is a real limitation worth naming rather than implying this algorithm guarantees correctness — it guarantees honesty about the process, not infallibility of the outcome.
+
+### 6.5 What "done" looks like for this fix
+
+Given any combination of triage confidence, service availability, and LLM self-report, the system produces exactly one final confidence label and one human-readable reason, computed by a fixed, restateable rule — and that reason correctly identifies whichever signal was weakest, verifiable by manually constructing test scenarios for each of the three signals being the limiting factor in turn.
+
+---
+
+## 7. Fix 5 — Emergency Orchestrator Algorithm
+
+### 7.1 Why this fix exists, and why it comes after Fixes 1–4 conceptually
+
+The Orchestrator is the piece of architecture that turns a collection of independently-functioning services into the single coordinated system the project is meant to be. It cannot be meaningfully designed or built before Fixes 1 through 4 exist, because its entire function is to call those pieces and combine their outputs — if those pieces don't yet fail gracefully, don't yet produce structured output, don't yet have a discrete classification step, and don't yet have a confidence signal to aggregate, then the Orchestrator would have nothing well-formed to coordinate. Building it first would mean building it against unstable foundations and then reworking it once those foundations changed underneath it.
+
+### 7.2 What the Orchestrator receives and what it must produce
+
+**Input:** A single incoming emergency description from a user (text, at minimum, under the current MVP scope), optionally accompanied by location coordinates and a language preference.
+
+**Output:** One unified response object containing: a plain-language explanation of the situation, the deterministic risk/severity level and its contributing factors, the classified emergency category, an ordered list of immediate actions and things to avoid, relevant emergency contacts, nearby resource suggestions (when location was available and the lookup succeeded), the final aggregated confidence level and its reason, and clear labeling throughout of which parts of the response came from live data, which from a database, and which from AI-generated reasoning — satisfying Principle 5's requirement to distinguish these sources explicitly rather than presenting everything with uniform authority.
+
+### 7.3 The coordination algorithm, step by step
+
+**Step 1 — Receive and validate the incoming request.** Confirm the minimum required input (the emergency description) is present; if location was provided, retain it for use in later steps; if a language preference was provided, retain it for the generation step.
+
+**Step 2 — Run triage classification (Fix 3).** Pass the user's description through the tiered classifier. Receive back a category (or "unclassified"), a confidence level, and an explanation of the match. This step happens early because its output — the identified category — becomes an input to the generation step later, per the design established in Fix 2.
+
+**Step 3 — Run the deterministic risk assessment, if location and weather data are relevant to the classified category.** This step depends on the weather service from Fix 1. Attempt to retrieve live weather data for the given location; if it succeeds, compute the deterministic risk score and retain its contributing factors; if it comes back "unavailable," retain that fact as a data-availability signal for later confidence aggregation, and decide — as a policy set by the Orchestrator, not by the weather service itself — whether to omit the risk score entirely or note that this component "couldn't be assessed live right now."
+
+**Step 4 — Run resource lookups, if location was provided.** Attempt hospital and shelter lookups in parallel (there's no dependency between them). Each may independently succeed or come back "unavailable" per Fix 1's pattern; retain both outcomes for later confidence aggregation, and pass through whichever resource data did succeed.
+
+**Step 5 — Run the action-planning generation step (Fix 2), providing it the classified category from Step 2 as context**, along with the user's original description, city/language, and any risk-level information gathered so far. Receive back the structured guidance object, including its self-reported confidence per Fix 2's design. If this call fails or returns non-compliant output, treat it per the fallback path described in Fix 1 and Fix 2 — proceed with a prepared static fallback message rather than blocking the entire response on this one step's failure.
+
+**Step 6 — Aggregate confidence (Fix 4).** With the triage confidence from Step 2, the data-availability outcomes from Steps 3 and 4, and the generation self-report from Step 5 all now available, compute the final confidence level and its explanatory reason using the weakest-link algorithm.
+
+**Step 7 — Assemble the single unified response.** Combine the classified category, the risk score and its contributing factors (or an honest note that it couldn't be computed), the generated guidance content, the resource lookup results (or an honest note that they couldn't be retrieved), the final confidence level and reason, and explicit source-tags on each major section (live data / database / AI-generated / community, per whichever applies) into one object. This is the only thing returned to the user — no individual step's raw output is exposed on its own, which is what fulfills Principle 1.
+
+**Step 8 — Log the interaction for the emergency record**, consistent with how the current system already logs emergency assessments, so there remains an audit trail of what was classified, what was recommended, and at what confidence — independent of whether the user proceeds to trigger SOS.
+
+### 7.4 Handling partial failure gracefully across the whole flow
+
+A key property this algorithm must have: **no single step's failure should cause the entire response to fail**, except the total, unrecoverable failure of the generation step in Step 5 with no fallback available, which is the one truly critical path (since without it, there is no guidance to give at all). Every other step — risk scoring, resource lookup — can fail independently while the Orchestrator still produces a meaningful, honestly-labeled partial response. This is the direct payoff of doing Fix 1 first: the Orchestrator's resilience is only possible because every step it calls already knows how to fail without crashing.
+
+### 7.5 Where this algorithm intentionally stays simple
+
+This design deliberately does not include: parallel speculative execution beyond the two independent resource lookups in Step 4, retries with backoff, caching of prior results across requests, or a plugin-style dynamic agent-selection mechanism (the docx's broader ten-agent vision) beyond what the MVP scope requires today. These are reasonable future directions, but building them now — for a project with a lifespan of a few days — would be solving problems the project doesn't have yet, consistent with the same reasoning that ruled out the token-compression tool earlier in this project's design conversations.
+
+### 7.6 What "done" looks like for this fix
+
+A single incoming request, run through this coordination sequence, produces exactly one response object regardless of how many of its internal steps succeeded or failed individually; artificially forcing any one dependent service to fail (weather, maps, or the LLM) during testing still produces a coherent, honestly-labeled response rather than a crash or a silently incomplete answer.
+
+---
+
+## 8. Fix 6 — SOS Event Logging Algorithm
+
+### 8.1 Why this fix exists
+
+The current SOS flow performs exactly one action: sending a push notification to registered devices. If that notification attempt fails for any reason, nothing about the SOS event is preserved anywhere — there is no database record that an SOS was ever triggered, at what location, or at what time. This is a meaningful gap for a feature explicitly meant to be relied upon during an actual emergency: the event itself (someone needed help, at this place, at this time) has value independent of whether the notification delivery succeeded, and losing that record entirely when notification fails is the wrong failure mode for a safety feature.
+
+### 8.2 The core design principle: decouple recording from notifying
+
+These are two different responsibilities that the current implementation incorrectly treats as one atomic action. Recording that an SOS occurred should not be contingent on the notification succeeding — a dispatcher, an administrator, or a future review process should be able to see "an SOS was triggered here, at this time" even on a day when the notification delivery mechanism itself was degraded or misconfigured.
+
+### 8.3 The algorithm, step by step
+
+**Step 1 — Receive the SOS trigger request**, which includes at minimum the user's current coordinates, captured only after the explicit user confirmation already required by Principle 6 — this fix does not change anything about how or when that confirmation happens, only what occurs after it.
+
+**Step 2 — Attempt the notification send**, exactly as today: construct and send a push notification to the registered alert topic.
+
+**Step 3 — Regardless of whether Step 2 succeeded or failed, write one persistent record of this event.** This record should capture: the location coordinates, a timestamp, whatever situational description was provided (if any), and a status field indicating the outcome of the notification attempt — not whether the SOS event itself was valid, since the event's validity is not in question; only the notification delivery outcome is what varies here. If the notification succeeded, the record also retains whatever reference/identifier the notification system returned, for traceability.
+
+**Step 4 — Return the recorded event to the caller, not merely the raw notification result.** This distinction matters for the user-facing behavior: the frontend can now distinguish "your SOS was logged and notifications went out" from "your SOS was logged, but we couldn't confirm the notification delivered" — which is meaningfully different, and more honest, than either a blanket success or a blanket failure message. Under the previous design, a notification failure produced a full request failure with no indication that the underlying event was still captured — this fix changes that specific behavior.
+
+**Step 5 — Do not fail the overall request merely because notification delivery failed.** The request should only be treated as a genuine failure if the record-writing step itself fails (for example, the database is entirely unreachable) — since at that point, nothing about the event was preserved at all, which is the actual failure condition worth surfacing loudly. A failed notification with a successful record is a degraded-but-meaningful outcome, not a total failure, consistent with the same "partial success is real success" philosophy applied throughout Fix 1.
+
+### 8.4 What fields belong in this record, and why
+
+The project's own intended data model already specifies the conceptual shape of this record: emergency type, severity, location, timestamp, status, and notification information. At the point this fix is implemented in isolation (before the Orchestrator exists), the emergency type and severity fields will not yet be available to populate — there are two reasonable ways to handle this, and it's worth deciding explicitly rather than leaving it ambiguous: either the fields exist in the record structure from the start but remain empty until the Orchestrator can supply them later, or the fields are added to the structure only once the Orchestrator exists and can populate them meaningfully. Both are reasonable; the former means one schema that gets progressively filled in over time, the latter means a schema that changes shape once, later. This is a small decision but worth making consciously rather than by default.
+
+### 8.5 The retention consideration, named explicitly rather than solved
+
+The project's own data-handling guidance discourages retaining raw location data longer than needed for the active incident, except where a justified longer-term relationship (such as a trusted-contacts relationship) exists. For a prototype with a lifespan measured in days, actively building a data-expiry or cleanup mechanism is very likely unnecessary work — but the absence of such a mechanism should be a conscious, documented trade-off, not a silent gap that would only be noticed if this project's lifespan were ever extended unexpectedly.
+
+### 8.6 Edge cases this algorithm needs to handle
+
+- **The record-write step itself fails after the notification already succeeded** — in this specific ordering, the notification has already gone out (responders may already be alerted) even though the durable record failed to save. This is arguably the least bad failure combination (the actual safety-relevant action, alerting someone, still happened) but it does mean the audit trail is incomplete. Worth being aware this asymmetry exists, even though building a two-phase transactional write to fully solve it is very likely more engineering than a short-lived prototype warrants, per the same reasoning as Fix 1's stance on retries.
+- **Repeated rapid SOS triggers from the same user** (for example, accidental double-taps, or a panicked user pressing confirm multiple times) — this fix does not include de-duplication logic; each trigger is recorded as its own event. Whether this is desirable or whether some minimal de-duplication is warranted is a separate design question not addressed by this specific fix.
+
+### 8.7 What "done" looks like for this fix
+
+Triggering an SOS event under normal conditions produces both a notification attempt and a persisted record; artificially forcing the notification step to fail (while the underlying record-writing capability remains functional) still results in a persisted, retrievable record of the event with a status clearly indicating the notification did not confirm delivery, and the user-facing response reflects that nuance rather than reporting a blanket failure.
+
+---
+
+## 9. Scope Governance Decisions (Not Fixes — Decisions)
+
+These three items are fundamentally different in character from Fixes 1–6: they are not broken things to repair, they are scope questions that were never explicitly answered, and answering them changes what the Orchestrator (Fix 5) needs to account for. Resolving them is cheap — each is a decision, not a design or build effort — but the resolution has real downstream consequences, which is why they're worth deciding before, or at latest alongside, finishing the fix queue above.
+
+### 9.1 Voice input
+
+**Current state:** Fully implemented on the frontend (a microphone control using the browser's built-in speech-recognition capability, feeding recognized text into the same input path as typed text).
+
+**Why this is a scope question, not a fix:** The project's own documented scope explicitly places voice input in a later phase, not the initial minimum build. Yet it already exists and functions.
+
+**The decision to make, and what each choice implies:**
+- **Option one — retroactively accept it into current scope.** This is low-cost precisely because voice input, as implemented, produces ordinary text that flows into the exact same pipeline as typed input — from the classifier's and Orchestrator's perspective, there is no difference between a voice-derived description and a typed one. Accepting this into scope mostly just means updating the documented scope boundary to reflect reality, with no algorithmic change required anywhere else in this document.
+- **Option two — roll it back until later.** This would mean deliberately disabling or removing the microphone control until the project reaches the phase where voice input was originally planned. The cost here is redoing work already completed, for the sake of matching a plan that may no longer reflect actual priorities.
+
+**Recommendation framing (not a decision made on your behalf):** Because this feature's output is indistinguishable from typed text by the time it reaches any of the fixes described above, accepting it into current scope carries very little architectural risk — the main cost of *not* deciding is leaving the documented scope boundary silently inaccurate, which erodes the usefulness of having a documented scope at all.
+
+### 9.2 Community reports and incident clustering
+
+**Current state:** Fully implemented — submission, listing, and a verification-status flag, backed by persistent storage, with a dedicated section of the interface.
+
+**Why this is a scope question, not a fix:** Same situation as voice input — explicitly scoped for a later phase, but already built.
+
+**Why this one is a more consequential decision than voice input:** Unlike voice input, community reports introduce an entirely new category of information source that the rest of this document's design has not yet accounted for. Specifically, the Orchestrator's source-labeling responsibility (Step 7 in Fix 5, and the broader requirement under Principle 5 to distinguish live data, database data, AI-generated content, and community-sourced data) currently has no community-data pathway designed at all, because until this decision is made, the Orchestrator's scope doesn't need to include it.
+
+**The decision to make, and what each choice implies:**
+- **Option one — accept into current scope.** This requires extending Fix 5's design: the Orchestrator would need a step that checks for relevant, verified community reports near the user's location and incorporates them (clearly labeled as unverified or verified, per the existing distinction already built into the reports feature) into the final response. This is a real, non-trivial addition to the Orchestrator's algorithm, not a documentation update.
+- **Option two — leave it as a standalone feature outside the Orchestrator's flow**, functioning exactly as it does today (a separate section users can browse and contribute to), without being pulled into the unified emergency response. This avoids any change to Fix 5's design, at the cost of this feature remaining a second, disconnected source of information — which is in mild tension with Principle 1, though arguably less so than the chat assistant case below, since this feature doesn't claim to be personalized emergency guidance, just a community bulletin.
+- **Option three — roll back until later**, matching the original documented phase.
+
+### 9.3 The standalone conversational assistant
+
+**Current state:** Fully implemented as a separate, parallel feature — a general-purpose chat interface using the same underlying language model, but with its own independent conversational context, entirely separate from the structured assessment flow.
+
+**Why this is the most consequential of the three decisions:** Unlike the previous two, this feature isn't merely "ahead of schedule" relative to a documented phase — it isn't mentioned in either the current-scope or future-scope lists at all. It exists as a second, independent pathway by which a user can receive AI-generated guidance about their situation, entirely bypassing triage classification, the deterministic risk assessment, and the eventual Orchestrator altogether. This is the most direct tension with Principle 1 ("one output, not ten") of anything currently in the system, because a user could plausibly receive different, unreconciled guidance from the structured assessment flow and from this chat feature for the same underlying situation, with no mechanism connecting the two.
+
+**The decision to make, and what each choice implies:**
+- **Option one — fold its functionality into the Orchestrator-governed flow.** This would mean the conversational, multi-turn nature of this feature becomes a follow-up-question capability *on top of* an already-generated Orchestrator response, rather than an independent parallel path — meaning any follow-up answer would still be grounded in the same classification, risk assessment, and confidence context as the original structured response. This is a meaningful design and build effort, not a small change, since it requires the Orchestrator to support a conversational continuation step that doesn't currently exist in this document's design at all.
+- **Option two — keep it explicitly separate, but relabel and scope it honestly** — for instance, positioning it clearly as general informational chat rather than emergency guidance, with interface language that steers users toward the structured assessment flow for anything urgent. This is a much smaller effort (a labeling and framing change) but does not fully resolve the underlying architectural tension — it manages the risk rather than eliminating it.
+- **Option three — remove or disable it until the structured flow (Fixes 1 through 5) is solid**, on the reasoning that a project explicitly prioritizing "fix what exists before adding" should not be maintaining two competing AI-guidance surfaces simultaneously while the primary one is still being repaired.
+
+**Why this decision is worth making sooner rather than later:** Whichever option is chosen has a direct effect on how much additional work Fix 5 (the Orchestrator) actually requires — Option one meaningfully expands Fix 5's scope, while Options two and three leave Fix 5 exactly as already designed in Section 7. Deciding this before finishing Fix 5's build avoids the risk of building the Orchestrator once, then reworking it if this decision is made afterward.
+
+---
+
+## 10. Deployment Considerations (Deliberately Parked)
+
+This section exists only to record that the choice of hosting platform for the frontend and backend has been consciously deferred until the fixes above are complete, and to summarize why that sequencing is correct rather than avoidant.
+
+**The reasoning for deferring:** Deployment-platform decisions (which service hosts the backend, how much memory it provides, whether a chosen technique like a local embedding model fits within that platform's constraints) are downstream of, and dependent on, decisions this document already covers — specifically, the embedding-model choice within Fix 3 has direct implications for memory footprint and dependency size, which in turn affects which hosting platforms are viable. Choosing a deployment platform before finalizing that technical detail risks discovering a constraint conflict after the fact, whereas finishing the technical design first and then matching it to a hosting platform avoids that risk entirely.
+
+**What remains open when this is revisited:** A comparison of actual, current memory and deployment-size limits across the hosting platforms under consideration, matched against the actual footprint of whichever embedding approach Fix 3 ends up using, plus confirmation of how the backend framework needs to be structured differently (if at all) depending on whether the chosen platform runs a persistent process or a stateless, serverless function model — since these two hosting models have meaningfully different implications for a design (like the embedding classifier's cached-in-memory canonical examples) that assumes a long-lived, persistent process.
+
+---
+
+## 11. Build Sequencing & Dependency Reasoning
+
+This section exists to make the dependency relationships between every fix explicit in one place, so the reasoning behind the recommended order isn't scattered across multiple sections.
+
+**Fix 1 (graceful failure handling) has no dependencies on any other fix**, and every other fix either directly or indirectly assumes it exists. This is why it is first.
+
+**Fix 2 (structured JSON output) depends on Fix 1** in the sense that its own failure path (a non-compliant model response) is handled using the exact same "unavailable" pattern established in Fix 1 — building Fix 2 first would mean inventing a one-off failure-handling approach for this specific call, then having to reconcile it with Fix 1's more general pattern later.
+
+**Fix 3 (tiered triage) has no hard dependency on Fixes 1 or 2 to be designed**, and could technically be built in parallel — but its Tier 3 fallback (the LLM classification call) benefits from the same failure-handling pattern as Fix 1, and its output is intended to feed into Fix 2's generation step as upstream context, so building it after Fix 2 exists means the integration point between them is already in place rather than needing to be retrofitted.
+
+**Fix 4 (confidence aggregation) directly depends on Fix 1 (for the data-availability signal), Fix 2 (for the generated-content self-report signal), and Fix 3 (for the triage confidence signal)** — it has no independent existence without all three of these already producing the specific signals it aggregates. This is why it cannot be built, or even fully specified in implementation terms, before those three exist.
+
+**Fix 5 (the Orchestrator) depends on all four preceding fixes simultaneously** — it is, by design, the layer that calls Fix 1's resilient services, invokes Fix 3's classifier, calls Fix 2's structured generation step, and performs Fix 4's aggregation. It is intentionally the last of the core five fixes for this reason; building it earlier would mean building a coordination layer with nothing stable yet to coordinate.
+
+**Fix 6 (SOS event logging) is independent of Fixes 1 through 5 entirely** — it touches a different part of the system (the SOS trigger flow) that doesn't share code paths with the assessment/triage/generation flow. It can be built at any point in this sequence, including in parallel with any of the other fixes, without dependency conflicts. It is listed last in this document only because it was the most recently discussed, not because it must come last in implementation.
+
+**The scope governance decisions (Section 9) should ideally be resolved before or during Fix 5's construction**, specifically because two of the three decisions (community reports, the standalone chat assistant) directly change what Fix 5 needs to be designed to handle. Resolving them after Fix 5 is built risks rework; resolving them before or during means Fix 5 is built once, correctly scoped from the start.
+
+**Deployment (Section 10) correctly remains last**, dependent on the technical choices made throughout, particularly within Fix 3.
+
+---
+
+## 12. Appendix — Threshold Tables, Data Contracts, and Glossary
+
+### 12.1 Confidence level definitions, used consistently across Fixes 3 and 4
+
+- **High confidence:** The signal in question was resolved with strong, unambiguous evidence — a direct keyword match, a similarity score comfortably above threshold with a clear margin over alternatives, or all dependent services returning live data successfully.
+- **Medium confidence:** The signal was resolved, but with some ambiguity — a similarity score just above threshold, a narrow margin between top candidates, or exactly one dependent service being unavailable.
+- **Low confidence:** The signal could not be resolved with meaningful certainty — no tier could confidently classify the input, multiple dependent services were unavailable, or the classification fell through to the least deterministic fallback tier.
+
+### 12.2 The weakest-link aggregation rule, restated as a single sentence
+
+The final confidence shown to a user is always equal to the lowest of: triage classification confidence, data-availability confidence (derived from how many relevant external services succeeded versus failed), and the LLM's self-reported generation confidence — with the accompanying explanation always naming whichever of these three was the limiting factor.
+
+### 12.3 Glossary of terms used throughout this document
+
+- **Orchestrator:** The single coordinating layer that calls every specialized capability (classification, risk scoring, resource lookup, guidance generation) and merges their results into one response, per Principle 1.
+- **Tier (in the context of triage):** One distinct technique within the classification cascade — rule-based keyword matching (Tier 1), embedding similarity (Tier 2), or LLM-based fallback classification (Tier 3) — attempted in increasing order of cost and decreasing order of determinism.
+- **Weakest link (in the context of confidence):** The aggregation philosophy where the lowest of several input signals determines the final output, rather than an average or majority-based approach, chosen specifically to avoid strong signals masking a genuinely weak one.
+- **Unavailable (in the context of service failure handling):** A structured, non-exception result indicating that an external dependency did not succeed, tagged with which dependency failed and why, as opposed to allowing the failure to propagate as an unhandled crash.
+- **Canonical example (in the context of embedding classification):** A representative, naturally-phrased sentence authored in advance for a given emergency category, used as a comparison point for classifying new, unseen user input by similarity rather than by keyword overlap.
+- **Weakest-link capping (in the context of generated content):** The principle that a language model's own stated confidence about its output should never be allowed to raise the final displayed confidence above what upstream classification and data-availability signals already support — it can only ever further lower the ceiling, never raise it.
+
+---
+
+*End of document.*

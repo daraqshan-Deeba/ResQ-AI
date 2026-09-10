@@ -12,6 +12,7 @@ async def list_hospitals(
     lat: float = Query(default=None),
     lon: float = Query(default=None),
 ):
-    return await maps_service.get_nearby_hospitals(
+    result = await maps_service.get_nearby_hospitals_safe(
         lat or settings.default_lat, lon or settings.default_lon
     )
+    return result.data or []

@@ -156,8 +156,11 @@
           <div class="preset-grid">
             <button class="glass-card preset-btn" data-preset="flooding"><span class="feature-icon">🌊</span>House Flooding</button>
             <button class="glass-card preset-btn" data-preset="electrocution"><span class="feature-icon">⚡</span>Electrocution</button>
-            <button class="glass-card preset-btn" data-preset="injury"><span class="feature-icon">🤕</span>Injury / Slip</button>
+            <button class="glass-card preset-btn" data-preset="injury"><span class="feature-icon">🤕</span>Injury / Bleeding</button>
             <button class="glass-card preset-btn" data-preset="snakebite"><span class="feature-icon">🐍</span>Snake Bite</button>
+            <button class="glass-card preset-btn" data-preset="cyclone"><span class="feature-icon">🌀</span>Cyclone / Storm</button>
+            <button class="glass-card preset-btn" data-preset="structural_damage"><span class="feature-icon">🏚️</span>Building Collapse</button>
+            <button class="glass-card preset-btn" data-preset="accident"><span class="feature-icon">🚗</span>Road Accident</button>
           </div>
 
           <div class="mono-tag" style="margin:24px 0 12px;">Describe what's happening</div>
@@ -166,12 +169,18 @@
             <button class="mic-btn" id="assessMic" title="Voice input">🎙️</button>
           </div>
 
+          <div style="display:flex;align-items:center;gap:10px;margin-top:14px;padding:8px 12px;background:rgba(255,255,255,0.02);border:1px solid var(--border);border-radius:10px;">
+            <input type="checkbox" id="assessLocationToggle" style="accent-color:var(--primary);cursor:pointer;width:16px;height:16px;" />
+            <label for="assessLocationToggle" style="cursor:pointer;font-size:13px;color:#cbd5e1;">Include my GPS location (optional — for nearby hospital search)</label>
+            <span id="assessLocationStatus" style="font-size:12px;margin-left:auto;color:var(--accent-soft);"></span>
+          </div>
+
           <button class="btn btn-primary" style="margin-top:20px;" id="assessSubmit">🚨 Get Help Now</button>
 
           <div class="glass-card card" style="margin-top:24px;" id="assessResult">
             <div class="mono-tag">Standing by</div>
             <h3 style="font-size:18px;margin-top:8px;">Waiting for your report</h3>
-            <p style="color:var(--muted);font-size:14px;margin-top:8px;">Pick a preset above or describe your situation. Once the risk-assessment agent (Module 4) is connected, this panel will show a live severity score, first-aid steps, and the nearest safe route.</p>
+            <p style="color:var(--muted);font-size:14px;margin-top:8px;">Pick a preset above or describe your situation. ResQ AI will classify the hazard, analyze weather conditions, and provide prioritized immediate safety actions.</p>
           </div>
         </div>
 
@@ -238,7 +247,7 @@
               <div style="width:64px;height:64px;border-radius:50%;background:var(--danger);display:flex;align-items:center;justify-content:center;font-size:28px;box-shadow:0 0 40px rgba(239,68,68,.3);">🚨</div>
             </div>
             <h1 style="font-size:24px;">Send an SOS</h1>
-            <p style="color:var(--muted);font-size:14px;">Pressing this shares your live location with responders via SMS.</p>
+            <p style="color:var(--muted);font-size:14px;">Pressing this records your emergency and sends a high-priority push alert to responders with your live location.</p>
             <button class="btn btn-danger" id="sosConfirmBtn">Confirm SOS</button>
             <p style="font-size:13px;color:var(--muted);" id="sosStatus"></p>
           </div>

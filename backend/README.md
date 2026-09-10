@@ -1,21 +1,19 @@
 # ResQ AI — Backend
 
-FastAPI backend for the three agents:
+FastAPI backend powered by the Emergency Orchestrator pipeline:
 
-- **Responder** (`/api/assessment`, `/api/chat`) — Grok (xAI) API.
-- **Sentinel** (`/api/weather`, `/api/weather/risk`) — OpenWeatherMap, turned
-  into the dashboard's risk score.
-- **Wayfinder** (`/api/hospitals`, `/api/shelters`) — Google Places for real
-  hospitals; Firestore for shelters, since no public API publishes live
-  shelter/bed occupancy.
-
-Also included: `/api/reports` (community reports), `/api/device-token`
-(register a browser for push alerts), and `/api/sos` (sends a free push
-notification via Firebase Cloud Messaging to every registered device).
-
-**Database + notifications are both Firebase** — Firestore is the database,
-Cloud Messaging (FCM) sends the SOS/alert pushes. One project, one setup,
-no separate Postgres server to run, and no per-SMS cost.
+- **Emergency Assessment** (`/api/assessment`) — Orchestrated multi-stage assessment:
+  1. Input validation & coordinate integrity
+  2. 3-Tier Triage (Deterministic regex rules -> Local TF-IDF cosine similarity -> Groq / Unclassified fallback)
+  3. Deterministic weather risk assessment (OpenWeatherMap)
+  4. Structured action planning with validated JSON output (Groq Llama 3.3 70B / Curated deterministic fallback)
+  5. Weakest-link confidence aggregation
+  6. Verified nearby hospital search (Google Places API — location-gated only)
+  7. Decoupled SOS persistence-first flow
+- **Sentinel** (`/api/weather`, `/api/weather/risk`) — OpenWeatherMap live conditions and deterministic flood/storm risk calculation.
+- **Wayfinder** (`/api/hospitals`, `/api/shelters`) — Google Places for verified hospitals; Firestore for shelters.
+- **SOS** (`/api/sos`) — Decoupled SOS event persistence (Firestore) followed by FCM topic dispatch.
+- **Community** (`/api/reports`, `/api/device-token`, `/api/chat`) — Community incident reports, push token registration, and contextual multi-turn emergency responder assistant.
 
 ## Step 1 — Firebase project (database + push, ~5 minutes)
 

@@ -13,12 +13,16 @@ the NEARBY HELP section will be based on the model's training data, not a
 live lookup, so treat those links as a starting point to verify, not gospel.
 """
 
+import logging
 import re
+from typing import Optional
 
 import httpx
 
 from app.core.config import settings
-from app.models.schemas import AssessmentResponse
+from app.models.schemas import AssessmentResponse, ServiceResult
+
+logger = logging.getLogger("resq.groq")
 
 GROQ_URL = "https://api.groq.com/openai/v1/chat/completions"
 
@@ -48,24 +52,124 @@ If you are not confident about a specific number, name, or fact, say so \
 plainly rather than inventing it.
 """
 
+STATIC_FALLBACK_ASSESSMENT = AssessmentResponse(
+    emergency_level="Moderate",
+    whats_happening="Live AI assessment service is currently unavailable. General emergency guidance is provided below.",
+    immediate_first_aid=[
+        "Move to higher ground if in a flood-prone or waterlogged area.",
+        "Stay clear of fallen power lines, electric poles, and flooded basements.",
+        "If anyone is injured, keep them warm, calm, and apply clean pressure to wounds.",
+    ],
+    what_not_to_do=[
+        "Do not attempt to walk or drive through flowing floodwaters.",
+        "Do not touch electrical switches, cords, or appliances while wet or standing in water.",
+    ],
+    call_these_services=[
+        "National Emergency Response: 112",
+        "Emergency Medical Ambulance: 108",
+        "Disaster Management Helpline: 1070",
+    ],
+    things_to_carry=[
+        "Clean drinking water and non-perishable food",
+        "Essential prescribed medications",
+        "Flashlight, whistle, and mobile power bank",
+        "Important identity documents in a sealed waterproof bag",
+    ],
+    nearby_help=[],
+    raw_text="[Fallback Guidance: Live AI responder is currently offline.]",
+)
 
-async def _call_groq(messages: list[dict], temperature: float = 0.3) -> str:
+
+async def call_groq_safe(
+    messages: list[dict],
+    temperature: float = 0.3,
+    response_format: Optional[dict] = None,
+) -> ServiceResult[str]:
+    api_key = settings.groq_api_key
+    if not api_key or not api_key.strip():
+        logger.info("Groq API key not configured; AI service disabled.")
+        return ServiceResult(
+            available=False,
+            error_type="service_disabled",
+            detail="Groq AI service is disabled or API key is not configured.",
+        )
+
     headers = {
-        "Authorization": f"Bearer {settings.groq_api_key}",
+        "Authorization": f"Bearer {api_key.strip()}",
         "Content-Type": "application/json",
     }
-    payload = {
+    payload: dict = {
         "model": settings.groq_model,
         "messages": messages,
         "temperature": temperature,
-        # If your xAI plan/model supports Live Search, add the relevant
-        # parameter here — see the module docstring above.
     }
-    async with httpx.AsyncClient(timeout=30) as client:
-        resp = await client.post(GROQ_URL, headers=headers, json=payload)
-        resp.raise_for_status()
-        data = resp.json()
-    return data["choices"][0]["message"]["content"]
+    if response_format:
+        payload["response_format"] = response_format
+
+    try:
+        async with httpx.AsyncClient(timeout=30) as client:
+            resp = await client.post(GROQ_URL, headers=headers, json=payload)
+            resp.raise_for_status()
+            data = resp.json()
+        content = data["choices"][0]["message"]["content"]
+        return ServiceResult(available=True, data=content)
+
+    except httpx.TimeoutException:
+        logger.warning("Timeout while connecting to Groq API.")
+        return ServiceResult(
+            available=False,
+            error_type="timeout",
+            detail="AI service request timed out.",
+        )
+    except httpx.HTTPStatusError as exc:
+        status = exc.response.status_code
+        logger.warning("Groq API returned HTTP %s.", status)
+        if status in (401, 403):
+            error_type = "auth_error"
+            detail = "AI service authorization error."
+        elif status == 404:
+            error_type = "not_found"
+            detail = "AI model or endpoint not found."
+        elif status == 429:
+            error_type = "rate_limited"
+            detail = "AI service rate limit exceeded. Please try again shortly."
+        elif status == 504:
+            error_type = "timeout"
+            detail = "AI service gateway timed out."
+        elif status in (500, 502, 503):
+            error_type = "server_error"
+            detail = "AI service is temporarily unavailable."
+        else:
+            error_type = "server_error"
+            detail = f"AI service responded with status {status}."
+        return ServiceResult(available=False, error_type=error_type, detail=detail)
+    except httpx.RequestError as exc:
+        logger.warning("Network error connecting to Groq API: %s", type(exc).__name__)
+        return ServiceResult(
+            available=False,
+            error_type="network_error",
+            detail="Network error while connecting to AI service.",
+        )
+    except (ValueError, KeyError, TypeError, IndexError) as exc:
+        logger.error("Failed to parse Groq API response: %s", exc)
+        return ServiceResult(
+            available=False,
+            error_type="parse_error",
+            detail="Malformed response received from AI service.",
+        )
+    except Exception as exc:
+        logger.error("Unexpected error in Groq service: %s", type(exc).__name__)
+        return ServiceResult(
+            available=False,
+            error_type="server_error",
+            detail="An unexpected error occurred in AI service.",
+        )
+
+
+async def _call_groq(messages: list[dict], temperature: float = 0.3) -> str:
+    """Legacy helper preserved for backward compatibility."""
+    res = await call_groq_safe(messages, temperature=temperature)
+    return res.data or ""
 
 
 def _build_prompt(description: str, city: str) -> str:
@@ -135,13 +239,30 @@ async def run_assessment(description: str, city: str, language: str = "English")
         {"role": "system", "content": SYSTEM_INSTRUCTION.format(city=city, language=language)},
         {"role": "user", "content": _build_prompt(description, city)},
     ]
-    raw_text = await _call_groq(messages, temperature=0.3)
-    return parse_response(raw_text)
+    res = await call_groq_safe(messages, temperature=0.3)
+    if not res.available or not res.data:
+        logger.warning(
+            "run_assessment: Groq unavailable (%s: %s). Using static emergency fallback.",
+            res.error_type,
+            res.detail,
+        )
+        return STATIC_FALLBACK_ASSESSMENT
+
+    try:
+        return parse_response(res.data)
+    except Exception as exc:
+        logger.error("Failed to parse Groq response: %s", exc)
+        return STATIC_FALLBACK_ASSESSMENT
 
 
 async def run_chat_reply(history: list[dict], message: str, city: str) -> str:
-    """Multi-turn call for the Assistant tab. `history` is a list of
-    {"role": "user"|"assistant", "text": "..."} dicts from the frontend."""
+    """Multi-turn call for the Assistant tab."""
+    if not settings.groq_api_key or not settings.groq_api_key.strip():
+        return (
+            "⚠️ The AI Assistant is currently disabled. "
+            "For emergency assistance in India, call 112 (National Emergency) or 108 (Ambulance)."
+        )
+
     messages = [
         {
             "role": "system",
@@ -156,4 +277,10 @@ async def run_chat_reply(history: list[dict], message: str, city: str) -> str:
         messages.append({"role": role, "content": turn["text"]})
     messages.append({"role": "user", "content": message})
 
-    return await _call_groq(messages, temperature=0.4)
+    res = await call_groq_safe(messages, temperature=0.4)
+    if not res.available or not res.data:
+        return (
+            "⚠️ The AI Assistant is temporarily unavailable. "
+            "For emergency help, please contact 112 (National Emergency) or 108 (Ambulance)."
+        )
+    return res.data

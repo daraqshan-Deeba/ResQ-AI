@@ -168,65 +168,99 @@ The system can register a browser device token with the backend and use Firebase
 
 ---
 
-## 🏗️ System Architecture
+## 🏗️ System Architecture & Orchestrator Pipeline
 
 ```text
-                         ┌──────────────────────┐
-                         │      ResQ AI User    │
-                         │      Web Browser     │
-                         └──────────┬───────────┘
-                                    │
-                                    │ HTTP Requests
-                                    ▼
-                         ┌──────────────────────┐
-                         │    HTML / CSS / JS   │
-                         │      Frontend        │
-                         └──────────┬───────────┘
-                                    │
-                                    │ REST API
-                                    ▼
-                         ┌──────────────────────┐
-                         │       FastAPI        │
-                         │       Backend        │
-                         └──────────┬───────────┘
-                                    │
-              ┌─────────────────────┼─────────────────────┐
-              │                     │                     │
-              ▼                     ▼                     ▼
-       ┌────────────┐       ┌──────────────┐      ┌──────────────┐
-       │ AI Service │       │ Weather API  │      │ Maps Service │
-       └────────────┘       └──────────────┘      └──────────────┘
-              │                     │                     │
-              └─────────────────────┼─────────────────────┘
-                                    │
-                                    ▼
-                         ┌──────────────────────┐
-                         │ Firebase / Database  │
-                         │ & Notification Data  │
-                         └──────────────────────┘
+                        ┌─────────────────────────┐
+                        │      ResQ AI User       │
+                        │ (HTML5 / Vanilla JS UI) │
+                        └────────────┬────────────┘
+                                     │ POST /api/assessment
+                                     │ (Explicit location opt-in)
+                                     ▼
+                        ┌─────────────────────────┐
+                        │      FastAPI Router     │
+                        │    /api/assessment      │
+                        └────────────┬────────────┘
+                                     │
+                                     ▼
+             ┌─────────────────────────────────────────────────┐
+             │         EMERGENCY ORCHESTRATOR SERVICE          │
+             │                                                 │
+             │  Stage 1: Input Validation & Sanitization       │
+             │  Stage 2: 3-Tier Triage Classification (TF-IDF) │
+             │  Stage 3: Deterministic Weather Risk Evaluation │
+             │  Stage 4: Advisory Action Planning (LLM/Rule)   │
+             │  Stage 5: Weakest-Link Confidence Aggregation   │
+             │  Stage 6: Location-Gated Hospital Search        │
+             │  Stage 7: Decoupled SOS Persistence & FCM Push  │
+             │  Stage 8: Result Assembly (AssessmentResult)    │
+             └─────────────────────────────────────────────────┘
+                                     │
+         ┌───────────────────────────┼───────────────────────────┐
+         ▼                           ▼                           ▼
+  ┌──────────────┐            ┌──────────────┐            ┌──────────────┐
+  │   Triage     │            │ Weather API  │            │  Maps & Groq │
+  │ TF-IDF / NLP │            │ (OpenWeather)│            │  Boundaries  │
+  └──────────────┘            └──────────────┘            └──────────────┘
+                                     │
+                                     ▼
+                          ┌──────────────────────┐
+                          │   Firebase Backend   │
+                          │ Firestore + FCM Push │
+                          └──────────────────────┘
 ```
+
+---
+
+## 🛡️ Architecture & Safety Invariants
+
+1. **Frontend Presentation Only:**
+   The frontend is purely a presentation layer. It never computes or alters emergency severity, weather risk, triage categories, or overall confidence.
+2. **Deterministic Authority for Severity & Weather Risk:**
+   LLMs act in an advisory capacity only (action planning) and have **zero authority** over emergency levels, triage, or weather risk. Weather risk is computed deterministically from real meteorological observations.
+3. **Three-Tier Triage Classification:**
+   - **Tier 1:** High-precision deterministic regex rules (`confidence: 0.90–0.95`).
+   - **Tier 2:** Local TF-IDF cosine similarity semantic fallback (`confidence: 0.70–0.85`).
+   - **Tier 3:** Minimal LLM fallback (`confidence: 0.35`) or safe unclassified baseline (`confidence: 0.20`).
+4. **Weakest-Link Confidence Model:**
+   Overall confidence is strictly conservative:
+   $$\text{Overall Confidence} = \min(\text{Triage Confidence}, \text{Weather Confidence}, \text{Action Plan Confidence})$$
+   A limiting factor is explicitly surfaced (e.g. `weather`, `triage`, `action_plan`) whenever confidence is non-high.
+5. **Decoupled SOS Persistence (Persist-First Flow):**
+   ```text
+   User Confirms SOS ──> Write to Firestore (Durable Record) ──> Attempt FCM Push ──> Update Notification Status
+   ```
+   **Critical Invariant:** An FCM push failure or network dropout *never* deletes or loses a persisted SOS record.
+   *Note:* `notification_accepted` indicates the push service accepted the dispatch; it does not guarantee human receipt.
+6. **Strict Privacy Boundaries:**
+   - **Location:** NEVER automatically collected on page load or assessment. Requires explicit checkbox toggle (`#assessLocationToggle`).
+   - **SOS:** NEVER automatically triggered by severity or triage results. Requires explicit user button interaction.
+7. **Graceful Degradation Across External Services:**
+   All external service calls (Groq, OpenWeatherMap, Google Places, Firebase) are wrapped in `ServiceResult[T]` error boundaries:
+   - **Groq Down:** Deterministic curated action plans are deployed with `provenance: deterministic`.
+   - **Weather Down:** Assessment succeeds with uninvented baseline weather; confidence is penalized to `low`.
+   - **Maps Down:** Returns empty hospital list; no fake hospitals or mock healthcare facilities are ever fabricated.
+   - **Firebase Down:** Application starts cleanly; SOS returns structured `status: degraded` directing user to dial 112 directly.
+
+---
+
 ## 🛠️ Technology Stack
 
 ### Frontend
-
-- HTML5
-- CSS3
-- Vanilla JavaScript
-- Browser Geolocation API
-- Firebase Cloud Messaging
+- HTML5, CSS3, Vanilla JavaScript (ES6+, zero build step)
+- Browser Geolocation API (Strict User Opt-In)
+- Web Speech API (Optional Voice Input)
+- Firebase Cloud Messaging Client
 
 ### Backend
+- Python 3.12+ / FastAPI / Uvicorn
+- Pydantic v2 (Validation & Schemas)
+- Scikit-learn (Local TF-IDF Vectorization for Tier 2 Triage)
+- HTTPX (Asynchronous Defensive Network Clients)
 
-- Python
-- FastAPI
-- Uvicorn
-- Pydantic
-- HTTPX
-
-### External Services
-
-- AI API
-- OpenWeatherMap API
-- Google Places / Maps Services
-- Firebase Cloud Messaging
-- Firestore
+### External Integrations
+- **Groq Cloud API:** Structured Action Planning (Llama 3.3 70B)
+- **OpenWeatherMap API:** Live Meteorological Observations
+- **Google Places API:** Verified Nearby Hospital Lookups
+- **Firebase Admin SDK:** Firestore Persistence & Cloud Messaging (FCM) Alert Topic Dispatch
