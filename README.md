@@ -210,41 +210,6 @@ The system can register a browser device token with the backend and use Firebase
                           │ Firestore + FCM Push │
                           └──────────────────────┘
 ```
-
----
-
-## 🛡️ Architecture & Safety Invariants
-
-1. **Frontend Presentation Only:**
-   The frontend is purely a presentation layer. It never computes or alters emergency severity, weather risk, triage categories, or overall confidence.
-2. **Deterministic Authority for Severity & Weather Risk:**
-   LLMs act in an advisory capacity only (action planning) and have **zero authority** over emergency levels, triage, or weather risk. Weather risk is computed deterministically from real meteorological observations.
-3. **Three-Tier Triage Classification:**
-   - **Tier 1:** High-precision deterministic regex rules (`confidence: 0.90–0.95`).
-   - **Tier 2:** Local TF-IDF cosine similarity semantic fallback (`confidence: 0.70–0.85`).
-   - **Tier 3:** Minimal LLM fallback (`confidence: 0.35`) or safe unclassified baseline (`confidence: 0.20`).
-4. **Weakest-Link Confidence Model:**
-   Overall confidence is strictly conservative:
-   $$\text{Overall Confidence} = \min(\text{Triage Confidence}, \text{Weather Confidence}, \text{Action Plan Confidence})$$
-   A limiting factor is explicitly surfaced (e.g. `weather`, `triage`, `action_plan`) whenever confidence is non-high.
-5. **Decoupled SOS Persistence (Persist-First Flow):**
-   ```text
-   User Confirms SOS ──> Write to Firestore (Durable Record) ──> Attempt FCM Push ──> Update Notification Status
-   ```
-   **Critical Invariant:** An FCM push failure or network dropout *never* deletes or loses a persisted SOS record.
-   *Note:* `notification_accepted` indicates the push service accepted the dispatch; it does not guarantee human receipt.
-6. **Strict Privacy Boundaries:**
-   - **Location:** NEVER automatically collected on page load or assessment. Requires explicit checkbox toggle (`#assessLocationToggle`).
-   - **SOS:** NEVER automatically triggered by severity or triage results. Requires explicit user button interaction.
-7. **Graceful Degradation Across External Services:**
-   All external service calls (Groq, OpenWeatherMap, Google Places, Firebase) are wrapped in `ServiceResult[T]` error boundaries:
-   - **Groq Down:** Deterministic curated action plans are deployed with `provenance: deterministic`.
-   - **Weather Down:** Assessment succeeds with uninvented baseline weather; confidence is penalized to `low`.
-   - **Maps Down:** Returns empty hospital list; no fake hospitals or mock healthcare facilities are ever fabricated.
-   - **Firebase Down:** Application starts cleanly; SOS returns structured `status: degraded` directing user to dial 112 directly.
-
----
-
 ## 🛠️ Technology Stack
 
 ### Frontend
