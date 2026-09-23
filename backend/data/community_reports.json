@@ -1,108 +1,144 @@
 [
   {
     "area": "Banjara Hills",
+    "lat": 17.4150,
+    "lon": 78.4350,
     "message": "Road accident near Road No. 12 junction. Two cars involved, traffic moving slowly.",
     "reporter_name": "Local resident",
     "verified": false
   },
   {
     "area": "Kukatpally",
+    "lat": 17.4940,
+    "lon": 78.3990,
     "message": "Heavy traffic congestion on NH65 due to waterlogging after rain.",
     "reporter_name": null,
     "verified": false
   },
   {
     "area": "Secunderabad",
+    "lat": 17.4390,
+    "lon": 78.4980,
     "message": "Road under construction near Paradise metro station. One lane closed.",
     "reporter_name": "Commuter",
     "verified": true
   },
   {
     "area": "Malakpet",
+    "lat": 17.3730,
+    "lon": 78.4930,
     "message": "Motorcycle accident reported near the flyover. Ambulance on scene.",
     "reporter_name": null,
     "verified": false
   },
   {
     "area": "Gachibowli",
+    "lat": 17.4400,
+    "lon": 78.3480,
     "message": "Slow traffic on ORR service road. Standstill for 20 minutes.",
     "reporter_name": "Driver",
     "verified": false
   },
   {
     "area": "Nallakunta",
+    "lat": 17.4000,
+    "lon": 78.5090,
     "message": "Street flooding after drain overflow. Cars stranded in knee-deep water.",
     "reporter_name": null,
     "verified": true
   },
   {
     "area": "Adikmet",
+    "lat": 17.4070,
+    "lon": 78.5140,
     "message": "Live wire reported down near standing water after storm. Area blocked.",
     "reporter_name": "Shop owner",
     "verified": false
   },
   {
     "area": "Charminar",
+    "lat": 17.3610,
+    "lon": 78.4740,
     "message": "Roof partially collapsed on old building. Debris on road, avoid the lane.",
     "reporter_name": null,
     "verified": false
   },
   {
     "area": "HITEC City",
+    "lat": 17.4480,
+    "lon": 78.3820,
     "message": "Road work and digging on main avenue. Expect delays during peak hours.",
     "reporter_name": "Office worker",
     "verified": true
   },
   {
     "area": "Uppal",
+    "lat": 17.3980,
+    "lon": 78.5580,
     "message": "Multi-vehicle collision on highway exit. Police directing traffic.",
     "reporter_name": null,
     "verified": false
   },
   {
     "area": "Kondapur",
+    "lat": 17.4620,
+    "lon": 78.3660,
     "message": "Water entering ground-floor shops. Street underwater near metro pillar.",
     "reporter_name": "Tenant",
     "verified": false
   },
   {
     "area": "Musheerabad",
+    "lat": 17.4200,
+    "lon": 78.5000,
     "message": "Snake sighting near flooded park path. Use caution walking at night.",
     "reporter_name": null,
     "verified": false
   },
   {
     "area": "LB Nagar",
+    "lat": 17.3500,
+    "lon": 78.5520,
     "message": "Bus breakdown causing traffic jam on main road.",
     "reporter_name": "Passenger",
     "verified": false
   },
   {
     "area": "Miyapur",
+    "lat": 17.4960,
+    "lon": 78.3910,
     "message": "Construction barricades narrowing both lanes near junction.",
     "reporter_name": null,
     "verified": true
   },
   {
     "area": "Tolichowki",
+    "lat": 17.3980,
+    "lon": 78.4200,
     "message": "Car hit pedestrian at crossing. Heavy bleeding reported, need ambulance.",
     "reporter_name": "Witness",
     "verified": false
   },
   {
     "area": "Abids",
+    "lat": 17.3920,
+    "lon": 78.4770,
     "message": "Cyclone-strength winds damaged shop shutters. Glass on footpath.",
     "reporter_name": null,
     "verified": false
   },
   {
     "area": "Dilsukhnagar",
+    "lat": 17.3680,
+    "lon": 78.5240,
     "message": "Gridlock near metro station after evening rain. Avoid if possible.",
     "reporter_name": "Commuter",
     "verified": false
   },
   {
     "area": "Shamirpet",
+    "lat": 17.5940,
+    "lon": 78.5760,
     "message": "Tree fallen across road after storm. Single lane passable only.",
     "reporter_name": null,
     "verified": true

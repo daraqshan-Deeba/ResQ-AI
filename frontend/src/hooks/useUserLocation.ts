@@ -24,7 +24,7 @@ export function useUserLocation(requestOnMount = true) {
   const refresh = useCallback(() => {
     if (!navigator.geolocation) {
       setStatus("unsupported");
-      setError("Geolocation is not supported in this browser.");
+      setError("Location is not available in this browser.");
       return;
     }
 
@@ -44,10 +44,10 @@ export function useUserLocation(requestOnMount = true) {
         setCoords(null);
         if (err.code === err.PERMISSION_DENIED) {
           setStatus("denied");
-          setError("Location permission denied. Enable GPS to see local weather and traffic.");
+          setError("Location access was denied. Turn it on to see weather and traffic near you.");
         } else {
           setStatus("error");
-          setError("Could not determine your location. Try again.");
+          setError("Could not find your location. Please try again.");
         }
       },
       { enableHighAccuracy: true, timeout: 15000, maximumAge: 60_000 },

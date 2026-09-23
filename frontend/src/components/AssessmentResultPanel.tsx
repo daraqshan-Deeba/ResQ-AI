@@ -2,31 +2,31 @@ import type { ReactNode } from "react";
 import type { AssessmentResult } from "@/lib/types";
 
 const SOURCE_LABELS: Record<string, string> = {
-  deterministic_keyword: "Keyword rules",
-  embedding_similarity: "Embedding match",
-  embedding_or_ml: "Rules / embedding / ML classifier",
-  ai_classification: "AI classification",
+  deterministic_keyword: "Matched known phrases",
+  embedding_similarity: "Matched similar examples",
+  embedding_or_ml: "Matched from rules and examples",
+  ai_classification: "Suggested category",
   live_weather_api: "Live weather",
-  unavailable: "Unavailable",
+  unavailable: "Not available",
   not_used: "Not used",
-  ai_generated: "AI-generated plan",
-  deterministic_fallback: "Deterministic fallback",
-  supabase_directory: "Supabase hospital directory",
-  firebase_directory: "Firebase hospital directory (legacy)",
+  ai_generated: "Written guidance",
+  deterministic_fallback: "Standard guidance",
+  supabase_directory: "Hospital directory",
+  firebase_directory: "Hospital directory",
   location_not_provided: "Location not shared",
-  community_reports: "Community reports",
+  community_reports: "Local reports",
   none: "None found",
-  database: "Database",
+  database: "Saved records",
 };
 
 const SERVICE_WARNINGS: Record<string, string> = {
-  unavailable: "data is unavailable",
-  service_disabled: "service is disabled",
-  timeout: "timed out",
-  network_error: "network error",
-  auth_error: "authentication failed",
-  server_error: "server error",
-  fallback_used: "using fallback guidance",
+  unavailable: "not available right now",
+  service_disabled: "turned off",
+  timeout: "took too long",
+  network_error: "connection problem",
+  auth_error: "could not connect",
+  server_error: "temporary problem",
+  fallback_used: "using standard guidance",
 };
 
 const LEVEL_STYLES: Record<string, { badge: string; ring: string; glow: string }> = {
@@ -141,7 +141,7 @@ export function AssessmentResultPanel({ result }: { result: AssessmentResult }) 
     <div className="space-y-5">
       {degraded.length > 0 && (
         <div className="rounded-2xl border border-amber-500/30 bg-amber-500/10 p-4 text-sm text-amber-100">
-          <div className="font-medium">Some services are degraded</div>
+          <div className="font-medium">Some information is incomplete</div>
           <ul className="mt-2 list-disc space-y-1 pl-5 text-amber-100/90">
             {degraded.map(([service, status]) => (
               <li key={service}>
@@ -160,7 +160,7 @@ export function AssessmentResultPanel({ result }: { result: AssessmentResult }) 
         />
         <div className="relative flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
           <div className="min-w-0 flex-1">
-            <p className="mono-tag mb-2">Emergency assessment</p>
+            <p className="mono-tag mb-2">Your result</p>
             <div className="flex flex-wrap items-center gap-2">
               <span className={levelStyle.badge}>{result.emergency_level}</span>
               {result.triage?.category && (
@@ -216,13 +216,13 @@ export function AssessmentResultPanel({ result }: { result: AssessmentResult }) 
           <div className="rounded-2xl border border-[var(--border)] bg-white/[0.03] p-4">
             <div className="mono-tag">Conditions</div>
             <div className="mt-2 text-xl font-semibold capitalize">
-              {result.weather.condition ?? "—"}
+              {result.weather.condition ?? "-"}
             </div>
           </div>
           <div className="rounded-2xl border border-[var(--border)] bg-white/[0.03] p-4">
             <div className="mono-tag">Temperature</div>
             <div className="mt-2 text-xl font-semibold">
-              {typeof result.weather.temp_c === "number" ? `${result.weather.temp_c}°C` : "—"}
+              {typeof result.weather.temp_c === "number" ? `${result.weather.temp_c}°C` : "-"}
             </div>
           </div>
         </div>
@@ -319,8 +319,8 @@ export function AssessmentResultPanel({ result }: { result: AssessmentResult }) 
       )}
 
       {result.community_insights && result.community_insights.length > 0 && (
-        <SectionCard title="Community context" icon="👥" tone="default">
-          <p className="mb-3 text-xs text-slate-500">Verify independently before acting.</p>
+        <SectionCard title="Local reports" icon="👥" tone="default">
+          <p className="mb-3 text-xs text-slate-500">Check these updates yourself before you act on them.</p>
           <div className="space-y-3">
             {result.community_insights.map((insight) => (
               <div
@@ -330,12 +330,12 @@ export function AssessmentResultPanel({ result }: { result: AssessmentResult }) 
                 <div className="flex flex-wrap items-center gap-2">
                   <b>{insight.area}</b>
                   <span className="text-xs text-slate-400">
-                    {insight.source === "knowledge_asset" ? "Indexed asset" : "Community report"}
+                    {insight.source === "knowledge_asset" ? "Safety note" : "Local report"}
                   </span>
                   {insight.verified ? (
-                    <span className="text-xs text-[var(--accent-soft)]">Verified</span>
+                    <span className="text-xs text-[var(--accent-soft)]">Checked</span>
                   ) : (
-                    <span className="text-xs text-amber-300">Unverified</span>
+                    <span className="text-xs text-amber-300">Not checked</span>
                   )}
                 </div>
                 <p className="mt-1 text-slate-300">{insight.message}</p>

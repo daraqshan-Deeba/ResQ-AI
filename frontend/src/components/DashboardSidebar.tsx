@@ -5,13 +5,11 @@ import { usePathname } from "next/navigation";
 import { DashboardUserMenu } from "@/components/DashboardUserMenu";
 
 const navItems = [
-  { href: "/dashboard", label: "Dashboard", icon: "🏠" },
-  { href: "/dashboard/assessment", label: "Emergency Assessment", icon: "📋" },
-  { href: "/dashboard/assistant", label: "Info Assistant", icon: "🤖" },
-  { href: "/dashboard/hospitals", label: "Nearby Hospitals", icon: "➕" },
-  { href: "/dashboard/shelters", label: "Nearby Shelters", icon: "🏘️" },
-  { href: "/dashboard/reports", label: "Community Reports", icon: "👥" },
-  { href: "/dashboard/sos", label: "SOS", icon: "🚨" },
+  { href: "/dashboard", label: "Home", icon: "🏠" },
+  { href: "/dashboard/assessment", label: "Get help", icon: "📋" },
+  { href: "/dashboard/hospitals", label: "Hospitals", icon: "➕" },
+  { href: "/dashboard/shelters", label: "Shelters", icon: "🏘️" },
+  { href: "/dashboard/reports", label: "Local reports", icon: "👥" },
   { href: "/dashboard/settings", label: "Settings", icon: "⚙️" },
 ];
 

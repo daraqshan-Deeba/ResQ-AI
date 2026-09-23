@@ -628,6 +628,22 @@ async def classify(description: str) -> TriageResult:
     safe_description = description[:2000]
     norm_text = _normalize(safe_description)
 
+    # Historical / past-tense reports are not active emergencies — skip
+    # keyword/embedding/ML tiers that would over-fit on lexical overlap
+    # (e.g. "years ago I had a car accident" → accident).
+    if _is_likely_historical(norm_text):
+        logger.debug("Triage: temporal markers suggest historical report.")
+        return TriageResult(
+            category="unclassified",
+            confidence=_UNCLASSIFIED_CONFIDENCE,
+            tier=3,
+            matched_rule_or_example=None,
+            explanation=(
+                "Description contains past-tense temporal markers "
+                "(e.g. 'years ago', 'last year'); treated as historical, not active."
+            ),
+        )
+
     # ── Tier 1 ──────────────────────────────────────────────────────────────
     try:
         t1 = _tier1_classify(norm_text)

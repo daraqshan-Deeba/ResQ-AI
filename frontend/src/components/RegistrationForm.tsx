@@ -159,14 +159,13 @@ export function RegistrationForm() {
   }
 
   if (loading) {
-    return <p className="text-sm text-slate-400">Loading your Google profile…</p>;
+    return <p className="text-sm text-slate-400">Loading your profile...</p>;
   }
 
   return (
     <form onSubmit={submit} className="space-y-4">
       <p className="text-sm text-slate-400">
-        We pulled these details from your Google account. Review and edit anything before
-        completing registration.
+        Please review your details and complete the form to continue.
       </p>
 
       {profile?.avatar_url && (
@@ -178,7 +177,7 @@ export function RegistrationForm() {
       )}
 
       <label className="block text-sm">
-        <span className="text-slate-400">Email (from Google)</span>
+        <span className="text-slate-400">Email</span>
         <input
           value={profile?.email ?? ""}
           readOnly
@@ -250,7 +249,7 @@ export function RegistrationForm() {
       {error && <p className="text-sm text-[var(--danger-soft)]">{error}</p>}
 
       <button type="submit" className="btn btn-primary w-full" disabled={saving}>
-        {saving ? "Saving…" : "Complete registration"}
+        {saving ? "Saving..." : "Save and continue"}
       </button>
     </form>
   );

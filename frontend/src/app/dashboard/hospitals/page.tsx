@@ -6,27 +6,27 @@ import type { Hospital } from "@/lib/types";
 
 export default function HospitalsPage() {
   const [hospitals, setHospitals] = useState<Hospital[]>([]);
-  const [status, setStatus] = useState("Loading…");
+  const [status, setStatus] = useState("Loading...");
 
   useEffect(() => {
     (async () => {
       const res = await apiCall<Hospital[]>("/api/hospitals");
       if (!res.ok) {
-        setStatus(res.error);
+        setStatus("Could not load hospitals. Please try again.");
         return;
       }
       setHospitals(res.data);
       setStatus(
         res.data.length
-          ? "Telangana PHC / hospital directory via Firebase (sorted by distance)."
-          : "No hospitals found nearby. Run backend/scripts/import_hospitals_kml.py to populate Firebase.",
+          ? `${res.data.length} hospitals and clinics found.`
+          : "No hospitals found nearby.",
       );
     })();
   }, []);
 
   return (
     <div>
-      <h1 className="text-2xl font-semibold">Nearby Hospitals</h1>
+      <h1 className="text-2xl font-semibold">Hospitals</h1>
       <p className="mt-2 text-sm text-slate-400">{status}</p>
       <div className="mt-6 grid gap-4 md:grid-cols-2 lg:grid-cols-3">
         {hospitals.map((h) => (
@@ -47,7 +47,7 @@ export default function HospitalsPage() {
               rel="noopener noreferrer"
               className="mt-3 inline-block text-sm text-[var(--accent-soft)]"
             >
-              Open in Google Maps →
+              Open in Maps
             </a>
           </div>
         ))}

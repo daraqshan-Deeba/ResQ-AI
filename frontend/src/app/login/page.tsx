@@ -16,12 +16,12 @@ export default async function LoginPage({
         </Link>
         <h1 className="mt-6 text-2xl font-semibold">Sign in</h1>
         <p className="mt-2 text-sm text-slate-400">
-          Use your Google account. New users will review their profile before registering.
+          Sign in with Google. New users will complete a short profile next.
         </p>
 
         {params.error === "auth" && (
           <p className="mt-4 text-sm text-[var(--danger-soft)]">
-            Sign-in failed. Check that Google is enabled in Supabase Auth.
+            Sign in failed. Please try again.
           </p>
         )}
 
@@ -30,8 +30,8 @@ export default async function LoginPage({
         </div>
 
         <p className="mt-6 text-center text-xs text-slate-500">
-          By continuing you agree to use ResQ AI for emergency awareness. Always call 112
-          for life-threatening emergencies.
+          ResQ AI is for emergency awareness. Always call 112 for a
+          life threatening emergency.
         </p>
       </div>
     </main>

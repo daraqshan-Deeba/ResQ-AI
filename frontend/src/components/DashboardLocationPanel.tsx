@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useUserLocation } from "@/hooks/useUserLocation";
 import { apiCall } from "@/lib/api";
+import { LocationMap } from "@/components/LocationMap";
 import type { RiskScore, TrafficOverview, WeatherSummary } from "@/lib/types";
 
 const TRAFFIC_STYLES: Record<string, string> = {
@@ -18,6 +19,13 @@ const INCIDENT_ICONS: Record<string, string> = {
   congestion: "🐌",
   road_closure: "⛔",
   community_report: "👥",
+};
+
+const CONGESTION_LABELS: Record<string, string> = {
+  light: "Light traffic",
+  moderate: "Moderate traffic",
+  heavy: "Heavy traffic",
+  unknown: "Traffic unknown",
 };
 
 export function DashboardLocationPanel() {
@@ -63,7 +71,7 @@ export function DashboardLocationPanel() {
           </div>
 
           {status === "loading" && (
-            <p className="mt-4 text-sm text-slate-400">Acquiring GPS coordinates…</p>
+            <p className="mt-4 text-sm text-slate-400">Finding your location...</p>
           )}
           {status === "unsupported" && (
             <p className="mt-4 text-sm text-amber-300">{error}</p>
@@ -72,43 +80,40 @@ export function DashboardLocationPanel() {
             <p className="mt-4 text-sm text-amber-300">{error}</p>
           )}
           {coords && (
-            <div className="mt-4 space-y-2 font-mono text-sm text-slate-200">
-              <div>Latitude: {coords.lat.toFixed(6)}°</div>
-              <div>Longitude: {coords.lon.toFixed(6)}°</div>
-              {coords.accuracy != null && (
-                <div className="text-slate-400">Accuracy ±{Math.round(coords.accuracy)} m</div>
-              )}
+            <div className="mt-4">
+              <LocationMap lat={coords.lat} lon={coords.lon} />
             </div>
           )}
           {!coords && status === "idle" && (
             <button type="button" className="btn btn-outline mt-4 text-sm" onClick={refresh}>
-              Enable location
+              Share location
             </button>
           )}
         </div>
 
         <div className="glass-card p-6">
-          <div className="mono-tag">Weather at your location</div>
+          <div className="mono-tag">Weather near you</div>
           {!coords ? (
-            <p className="mt-4 text-sm text-slate-400">Share location to load local weather.</p>
+            <p className="mt-4 text-sm text-slate-400">Share your location to see weather.</p>
           ) : loadingData && !weather ? (
-            <p className="mt-4 text-sm text-slate-400">Loading weather…</p>
+            <p className="mt-4 text-sm text-slate-400">Loading weather...</p>
           ) : (
             <>
               <h2 className="mt-3 text-2xl font-semibold capitalize">
                 {weather?.condition ?? "Unavailable"}
               </h2>
               <p className="mt-2 text-3xl font-bold">
-                {weather ? `${Math.round(weather.temp_c)}°C` : "—"}
+                {weather ? `${Math.round(weather.temp_c)}°C` : "-"}
               </p>
               {weather && (
                 <p className="mt-2 text-sm text-slate-400">
-                  Rain last hour: {weather.rain_mm_last_hour} mm
+                  Rain in the last hour: {weather.rain_mm_last_hour} mm
                 </p>
               )}
               {risk && (
                 <p className="mt-3 text-sm text-slate-400">
-                  Flood risk: <span className="capitalize text-slate-200">{risk.level}</span> (
+                  Flood risk:{" "}
+                  <span className="capitalize text-slate-200">{risk.level}</span> (
                   {risk.score}/100)
                 </p>
               )}
@@ -119,26 +124,21 @@ export function DashboardLocationPanel() {
         <div className="glass-card p-6">
           <div className="mono-tag">Traffic near you</div>
           {!coords ? (
-            <p className="mt-4 text-sm text-slate-400">Share location to check nearby traffic.</p>
+            <p className="mt-4 text-sm text-slate-400">Share your location to see traffic.</p>
           ) : (
             <>
               <div
-                className={`mt-4 inline-flex rounded-full border px-3 py-1 text-sm font-medium capitalize ${TRAFFIC_STYLES[congestion]}`}
+                className={`mt-4 inline-flex rounded-full border px-3 py-1 text-sm font-medium ${TRAFFIC_STYLES[congestion]}`}
               >
-                {congestion} congestion
+                {CONGESTION_LABELS[congestion] ?? congestion}
               </div>
               <p className="mt-3 text-sm text-slate-400">
                 {traffic
-                  ? `${traffic.incident_count} incident(s) within ${traffic.radius_km} km`
+                  ? `${traffic.incident_count} report(s) within ${traffic.radius_km} km`
                   : loadingData
-                    ? "Scanning roads…"
-                    : "No traffic data"}
+                    ? "Checking nearby roads..."
+                    : "No traffic updates yet"}
               </p>
-              {traffic?.sources_used?.length ? (
-                <p className="mt-2 text-xs text-slate-500">
-                  Sources: {traffic.sources_used.join(", ")}
-                </p>
-              ) : null}
             </>
           )}
         </div>
@@ -146,7 +146,12 @@ export function DashboardLocationPanel() {
 
       {coords && traffic && traffic.incidents.length > 0 && (
         <div className="glass-card p-6">
-          <div className="mono-tag mb-4">Road incidents &amp; disruptions</div>
+          <div className="mono-tag mb-4">
+            Road problems nearby
+            {traffic.radius_km != null && (
+              <span className="ml-2 text-slate-400">within {traffic.radius_km} km</span>
+            )}
+          </div>
           <div className="space-y-3">
             {traffic.incidents.map((incident) => (
               <div
@@ -160,14 +165,13 @@ export function DashboardLocationPanel() {
                     {incident.type.replaceAll("_", " ")}
                   </span>
                   {incident.verified ? (
-                    <span className="text-xs text-emerald-300">Verified</span>
+                    <span className="text-xs text-emerald-300">Checked</span>
                   ) : (
-                    <span className="text-xs text-amber-300">Unverified</span>
+                    <span className="text-xs text-amber-300">Not checked</span>
                   )}
                 </div>
                 <p className="mt-2 text-sm text-slate-300">{incident.description}</p>
                 <div className="mt-2 flex flex-wrap gap-3 text-xs text-slate-500">
-                  <span>Source: {incident.source.replaceAll("_", " ")}</span>
                   {typeof incident.distance_km === "number" && (
                     <span>{incident.distance_km.toFixed(1)} km away</span>
                   )}
@@ -178,7 +182,7 @@ export function DashboardLocationPanel() {
                       target="_blank"
                       rel="noreferrer"
                     >
-                      View on map
+                      Open map
                     </a>
                   )}
                 </div>
@@ -190,8 +194,8 @@ export function DashboardLocationPanel() {
 
       {coords && traffic && traffic.incidents.length === 0 && !loadingData && (
         <div className="glass-card p-6 text-sm text-slate-400">
-          No accidents, construction, or congestion reports found within 5 km. Roads look relatively
-          clear — still drive carefully in wet conditions.
+          No accidents, road work, or heavy traffic reported within 5 km.
+          Still drive carefully in wet weather.
         </div>
       )}
     </div>

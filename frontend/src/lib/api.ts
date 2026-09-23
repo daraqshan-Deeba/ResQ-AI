@@ -15,10 +15,9 @@ export async function apiCall<T>(
     });
 
     if (!res.ok) {
-      const detail = await res.text().catch(() => "");
       return {
         ok: false,
-        error: `${res.status} ${res.statusText}${detail ? ` — ${detail}` : ""}`,
+        error: "Something went wrong. Please try again.",
       };
     }
 
@@ -26,7 +25,7 @@ export async function apiCall<T>(
   } catch {
     return {
       ok: false,
-      error: `Could not reach the backend — is Flask running at ${API_BASE}?`,
+      error: "Could not connect right now. Please try again in a moment.",
     };
   }
 }
@@ -42,10 +41,9 @@ export async function apiUpload<T>(
     });
 
     if (!res.ok) {
-      const detail = await res.text().catch(() => "");
       return {
         ok: false,
-        error: `${res.status} ${res.statusText}${detail ? ` — ${detail}` : ""}`,
+        error: "Something went wrong. Please try again.",
       };
     }
 
@@ -53,7 +51,7 @@ export async function apiUpload<T>(
   } catch {
     return {
       ok: false,
-      error: `Could not reach the backend — is Flask running at ${API_BASE}?`,
+      error: "Could not connect right now. Please try again in a moment.",
     };
   }
 }

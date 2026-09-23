@@ -38,6 +38,29 @@ CONGESTION_PATTERN = re.compile(
     re.IGNORECASE,
 )
 
+# Approximate centroids for Hyderabad area labels used in community reports.
+# Used only when a report has no explicit lat/lon of its own.
+_HYDERABAD_AREA_COORDS: dict[str, tuple[float, float]] = {
+    "abids": (17.3920, 78.4770),
+    "adikmet": (17.4070, 78.5140),
+    "banjara hills": (17.4150, 78.4350),
+    "charminar": (17.3610, 78.4740),
+    "dilsukhnagar": (17.3680, 78.5240),
+    "gachibowli": (17.4400, 78.3480),
+    "hitec city": (17.4480, 78.3820),
+    "kondapur": (17.4620, 78.3660),
+    "kukatpally": (17.4940, 78.3990),
+    "lb nagar": (17.3500, 78.5520),
+    "malakpet": (17.3730, 78.4930),
+    "miyapur": (17.4960, 78.3910),
+    "musheerabad": (17.4200, 78.5000),
+    "nallakunta": (17.4000, 78.5090),
+    "secunderabad": (17.4390, 78.4980),
+    "shamirpet": (17.5940, 78.5760),
+    "tolichowki": (17.3980, 78.4200),
+    "uppal": (17.3980, 78.5580),
+}
+
 
 def haversine_km(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
     radius_km = 6371.0
@@ -221,7 +244,34 @@ async def _fetch_tomtom_incidents(
     return incidents
 
 
-def _fetch_community_incidents() -> list[TrafficIncident]:
+def _resolve_report_coords(report: dict) -> Optional[tuple[float, float]]:
+    """Prefer explicit lat/lon; otherwise map known Hyderabad area labels."""
+    lat = report.get("lat")
+    lon = report.get("lon")
+    try:
+        if lat is not None and lon is not None:
+            return float(lat), float(lon)
+    except (TypeError, ValueError):
+        pass
+
+    area = (report.get("area") or "").strip().lower()
+    if not area:
+        return None
+    if area in _HYDERABAD_AREA_COORDS:
+        return _HYDERABAD_AREA_COORDS[area]
+    # Allow partial matches like "Uppal Ring Road"
+    for key, coords in _HYDERABAD_AREA_COORDS.items():
+        if key in area or area in key:
+            return coords
+    return None
+
+
+def _fetch_community_incidents(
+    lat: float,
+    lon: float,
+    radius_km: float,
+) -> list[TrafficIncident]:
+    """Return community traffic reports that fall inside the same radius as OSM/TomTom."""
     incidents: list[TrafficIncident] = []
     try:
         reports = database_service.list_reports()
@@ -229,21 +279,33 @@ def _fetch_community_incidents() -> list[TrafficIncident]:
         logger.warning("Community traffic reports unavailable: %s", exc)
         return incidents
 
-    for report in reports[:50]:
+    for report in reports[:100]:
         message = report.get("message", "")
         category = _classify_report_message(message)
         if not category:
             continue
+
+        coords = _resolve_report_coords(report)
+        if coords is None:
+            # Cannot place the report — omit from "nearby" list rather than
+            # showing citywide incidents as if they were local.
+            continue
+
+        report_lat, report_lon = coords
+        distance = haversine_km(lat, lon, report_lat, report_lon)
+        if distance > radius_km:
+            continue
+
         incidents.append(
             TrafficIncident(
                 id=f"report-{report.get('id', len(incidents))}",
                 type=category,
                 title=f"{category.replace('_', ' ').title()} — {report.get('area', 'Unknown area')}",
                 description=message,
-                lat=None,
-                lon=None,
-                distance_km=None,
-                severity="high" if category == "accident" else "moderate",
+                lat=report_lat,
+                lon=report_lon,
+                distance_km=round(distance, 2),
+                severity=_incident_severity(category, distance),
                 source="community_report",
                 verified=bool(report.get("verified", False)),
             )
@@ -267,23 +329,27 @@ async def get_traffic_nearby_safe(
     if tomtom_incidents:
         sources_used.append("tomtom")
 
-    community_incidents = _fetch_community_incidents()
+    community_incidents = _fetch_community_incidents(lat, lon, radius_km)
     if community_incidents:
         sources_used.append("community_reports")
 
     merged: list[TrafficIncident] = []
     seen: set[str] = set()
     for item in [*tomtom_incidents, *osm_incidents, *community_incidents]:
+        # Drop anything outside the requested radius (defense in depth).
+        if item.distance_km is not None and item.distance_km > radius_km:
+            continue
+        # Community/OSM items without distance were already filtered above;
+        # never promote unlocated items into the nearby list.
+        if item.distance_km is None:
+            continue
         key = f"{item.type}:{item.title}:{item.description[:40]}"
         if key in seen:
             continue
         seen.add(key)
         merged.append(item)
 
-    with_distance = [i for i in merged if i.distance_km is not None]
-    without_distance = [i for i in merged if i.distance_km is None]
-    with_distance.sort(key=lambda i: i.distance_km or 999)
-    merged = with_distance + without_distance
+    merged.sort(key=lambda i: i.distance_km or 999)
 
     level = _congestion_level(len(merged))
     if not sources_used:

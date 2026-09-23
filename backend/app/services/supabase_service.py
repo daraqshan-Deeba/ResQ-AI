@@ -127,6 +127,8 @@ def add_report(
     attachment_path: str | None = None,
     attachment_url: str | None = None,
     attachment_mime: str | None = None,
+    lat: float | None = None,
+    lon: float | None = None,
 ) -> dict:
     payload = {
         "area": area,
@@ -140,6 +142,9 @@ def add_report(
     }
     if user_id:
         payload["user_id"] = user_id
+    if lat is not None and lon is not None:
+        payload["lat"] = lat
+        payload["lon"] = lon
     response = _table("community_reports").insert(payload).execute()
     if not response.data:
         raise RuntimeError("Supabase insert returned no data for report")
@@ -154,6 +159,8 @@ def _format_report(row: dict) -> dict:
         "message": row["message"],
         "verified": row.get("verified", False),
         "created_at": row["created_at"],
+        "lat": row.get("lat"),
+        "lon": row.get("lon"),
         "attachment_url": row.get("attachment_url"),
         "attachment_mime": row.get("attachment_mime"),
     }

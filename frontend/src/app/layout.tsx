@@ -13,9 +13,9 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "ResQ AI — Emergency Response Platform",
+  title: "ResQ AI | Emergency help for your area",
   description:
-    "AI-powered emergency response and disaster management for real-time risk assessment, resources, and SOS support.",
+    "Get weather risk, nearby hospitals and shelters, local reports, and clear guidance during an emergency.",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {

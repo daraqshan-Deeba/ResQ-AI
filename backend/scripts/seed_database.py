@@ -63,6 +63,8 @@ def seed_community_reports(force: bool) -> int:
             "message": r["message"],
             "reporter_name": r.get("reporter_name"),
             "verified": bool(r.get("verified", False)),
+            "lat": r.get("lat"),
+            "lon": r.get("lon"),
             "created_at": now,
         }
         for r in rows

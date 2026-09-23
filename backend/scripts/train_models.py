@@ -48,9 +48,9 @@ def main() -> None:
         print(json.dumps(summary, indent=2))
     else:
         print("Trained models:")
-        print(f"  triage  → {triage_path}")
+        print(f"  triage  -> {triage_path}")
         print(f"           rows={summary['triage']['total_training_rows']} classes={summary['triage']['classes']}")
-        print(f"  reports → {report_path}")
+        print(f"  reports -> {report_path}")
         print(f"           rows={summary['reports']['total_training_rows']} classes={summary['reports']['classes']}")
 
 

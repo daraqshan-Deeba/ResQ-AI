@@ -104,7 +104,7 @@ export async function pingBackend(): Promise<KeepaliveCheck> {
 
       if (!response.ok) {
         const body = await response.text().catch(() => "");
-        throw new Error(`${response.status} ${response.statusText}${body ? ` — ${body}` : ""}`);
+        throw new Error(`${response.status} ${response.statusText}${body ? ` - ${body}` : ""}`);
       }
 
       await response.json();

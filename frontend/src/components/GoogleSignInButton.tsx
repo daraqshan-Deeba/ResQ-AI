@@ -13,7 +13,7 @@ export function GoogleSignInButton({ label = "Continue with Google" }: { label?:
 
     if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
       setError(
-        "Supabase is not configured. Add NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY to frontend/.env.local, then restart npm run dev.",
+        "Sign in is not available right now. Please try again later.",
       );
       setLoading(false);
       return;
@@ -44,7 +44,7 @@ export function GoogleSignInButton({ label = "Continue with Google" }: { label?:
         onClick={signIn}
         disabled={loading}
       >
-        {loading ? "Redirecting…" : `🔐 ${label}`}
+        {loading ? "Please wait..." : `🔐 ${label}`}
       </button>
       {error && <p className="mt-3 text-sm text-[var(--danger-soft)]">{error}</p>}
     </div>

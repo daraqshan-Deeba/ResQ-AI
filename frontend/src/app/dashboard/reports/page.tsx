@@ -16,16 +16,20 @@ export default function ReportsPage() {
   const [area, setArea] = useState("");
   const [message, setMessage] = useState("");
   const [file, setFile] = useState<File | null>(null);
-  const [status, setStatus] = useState("Loading…");
+  const [status, setStatus] = useState("Loading...");
 
   async function load() {
     const res = await apiCall<Report[]>("/api/reports");
     if (!res.ok) {
-      setStatus(res.error);
+      setStatus("Could not load reports. Please try again.");
       return;
     }
     setReports(res.data);
-    setStatus("Live from Supabase — text reports are vector-indexed for search.");
+    setStatus(
+      res.data.length
+        ? `${res.data.length} local report(s).`
+        : "No reports yet. Be the first to share an update.",
+    );
   }
 
   useEffect(() => {
@@ -42,7 +46,7 @@ export default function ReportsPage() {
       form.append("file", file);
       const res = await apiUpload<Report>("/api/reports", form);
       if (!res.ok) {
-        alert(res.error);
+        alert("Could not submit your report. Please try again.");
         return;
       }
     } else {
@@ -51,7 +55,7 @@ export default function ReportsPage() {
         body: JSON.stringify({ area, message }),
       });
       if (!res.ok) {
-        alert(res.error);
+        alert("Could not submit your report. Please try again.");
         return;
       }
     }
@@ -64,25 +68,25 @@ export default function ReportsPage() {
 
   return (
     <div className="mx-auto max-w-3xl">
-      <h1 className="text-2xl font-semibold">Community Reports</h1>
+      <h1 className="text-2xl font-semibold">Local reports</h1>
       <p className="mt-2 text-sm text-slate-400">{status}</p>
 
       <div className="glass-card mt-6 p-5">
-        <div className="mono-tag mb-3">Submit a report</div>
+        <div className="mono-tag mb-3">Share an update</div>
         <input
           value={area}
           onChange={(e) => setArea(e.target.value)}
-          placeholder="Area (e.g. Tarnaka)"
+          placeholder="Area (for example, Tarnaka)"
           className="mb-3 w-full rounded-xl border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-sm"
         />
         <textarea
           value={message}
           onChange={(e) => setMessage(e.target.value)}
-          placeholder="What's happening here?"
+          placeholder="What is happening here?"
           className="min-h-[80px] w-full rounded-xl border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-sm"
         />
         <label className="mt-3 block text-sm text-slate-400">
-          Optional photo or document (stored in Supabase object storage)
+          Optional photo or document
           <input
             type="file"
             accept="image/*,.txt,.md,.pdf"
@@ -103,7 +107,7 @@ export default function ReportsPage() {
               <div className="flex items-center gap-2">
                 <b>{r.area}</b>
                 {r.verified && (
-                  <span className="text-xs text-[var(--accent-soft)]">✅ Verified</span>
+                  <span className="text-xs text-[var(--accent-soft)]">Checked</span>
                 )}
               </div>
               <p className="mt-1 text-sm">{r.message}</p>
@@ -121,7 +125,7 @@ export default function ReportsPage() {
                   rel="noreferrer"
                   className="mt-2 inline-block text-sm text-[var(--accent-soft)] underline"
                 >
-                  View attached document
+                  View attached file
                 </a>
               )}
               <span className="mono-tag mt-2 inline-block normal-case">

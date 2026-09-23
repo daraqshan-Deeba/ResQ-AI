@@ -16,7 +16,7 @@ export default function HomePage() {
             </Link>
           </div>
           <Link href="/dashboard/assessment" className="btn btn-primary px-4 py-2 text-sm">
-            Report Emergency
+            Report an emergency
           </Link>
         </nav>
       </header>
@@ -24,38 +24,37 @@ export default function HomePage() {
       <section className="relative overflow-hidden px-6 py-24">
         <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(37,99,235,0.25),transparent_55%)]" />
         <div className="relative mx-auto max-w-4xl text-center">
-          <div className="mono-tag mb-4">Live monsoon monitoring · Hyderabad region</div>
+          <div className="mono-tag mb-4">Hyderabad and nearby areas</div>
           <h1 className="text-4xl font-bold leading-tight md:text-6xl">
-            When the water rises,
+            Clear guidance when
             <br />
-            <span className="text-gradient">ResQ AI</span> tells you where to go.
+            <span className="text-gradient">you need help fast</span>
           </h1>
           <p className="mx-auto mt-6 max-w-2xl text-slate-300">
-            A coordinated emergency response platform with live weather risk,
-            AI-guided assessments, nearby resources, community reports, and SOS
-            location capture — powered by a Flask backend and Next.js frontend.
+            Check weather risk near you, find hospitals and shelters, read local
+            reports, and get step by step guidance during an emergency.
           </p>
           <div className="mt-10 flex flex-wrap justify-center gap-4">
             <Link href="/login" className="btn btn-primary">
-              Get started →
+              Get started
             </Link>
             <Link href="/dashboard/assessment" className="btn btn-outline">
-              Emergency assessment
+              Ask for help now
             </Link>
           </div>
         </div>
       </section>
 
       <section id="features" className="mx-auto max-w-6xl px-6 py-16">
-        <h2 className="text-3xl font-semibold">What it does</h2>
+        <h2 className="text-3xl font-semibold">What you can do</h2>
         <div className="mt-8 grid gap-6 md:grid-cols-3">
           {[
-            ["🚨", "Emergency Assessment", "Tiered triage, weather risk, and structured action plans via the orchestrator."],
-            ["🌦️", "Live Weather Risk", "OpenWeather-driven risk scoring with transparent contributing factors."],
-            ["🏥", "Nearby Resources", "Hospitals from Firebase and shelters from Supabase."],
-            ["👥", "Community Reports", "Ground-truth incident reports with verification status."],
-            ["🆘", "SOS Capture", "Explicit user-confirmed location sharing with durable event logging."],
-            ["🤖", "Info Assistant", "General safety Q&A — urgent cases use Emergency Assessment."],
+            ["🚨", "Get help", "Describe what is happening and receive clear next steps."],
+            ["🌦️", "Weather risk", "See rainfall and flood risk for your current location."],
+            ["🏥", "Hospitals nearby", "Find health facilities close to you with map directions."],
+            ["👥", "Local reports", "Read and share updates from people in your area."],
+            ["🆘", "SOS alert", "Share your location only after you confirm."],
+            ["💬", "Ask a question", "Use Chat for general safety questions that are not urgent."],
           ].map(([icon, title, body]) => (
             <div key={title} className="glass-card p-6">
               <div className="text-2xl">{icon}</div>
@@ -68,15 +67,11 @@ export default function HomePage() {
 
       <section id="how" className="border-t border-[var(--border)] px-6 py-16">
         <div className="mx-auto max-w-3xl text-center">
-          <h2 className="text-3xl font-semibold">How it connects</h2>
+          <h2 className="text-3xl font-semibold">How it works</h2>
           <p className="mt-4 text-slate-300">
-            The Next.js app calls the Flask API at{" "}
-            <code className="rounded bg-white/5 px-2 py-1 text-sm">
-              {process.env.NEXT_PUBLIC_API_URL ?? "http://127.0.0.1:8000"}
-            </code>
-            . The Emergency Orchestrator on the backend assembles triage,
-            weather, action planning, confidence, and optional hospital lookup
-            into one unified response.
+            Sign in, share your location if you choose, describe the situation,
+            and review guidance, weather, and nearby help in one place. For a
+            life threatening emergency, call 112 or 108 first.
           </p>
         </div>
       </section>

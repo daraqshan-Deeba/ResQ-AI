@@ -23,7 +23,7 @@ const initialMessages: Message[] = [
   {
     role: "assistant",
     text:
-      "Hi — I'm the general information assistant. I can answer basic monsoon-safety questions, but I am not the primary emergency system. For urgent situations, open Emergency Assessment or call 112 / 108.",
+      "Hello. I can answer general safety questions. I am not for urgent emergencies. If someone needs help right away, use Get help or call 112 / 108.",
   },
 ];
 
@@ -43,7 +43,7 @@ export function ChatWidget({ compact = false }: { compact?: boolean }) {
 
     const history = messages.map((m) => ({ role: m.role, text: m.text }));
     const next = [...messages, { role: "user" as const, text }];
-    setMessages([...next, { role: "assistant", text: "…" }]);
+    setMessages([...next, { role: "assistant", text: "..." }]);
     setInput("");
     setSending(true);
 
@@ -71,15 +71,17 @@ export function ChatWidget({ compact = false }: { compact?: boolean }) {
   }
 
   return (
-    <div className={`flex h-full flex-col ${compact ? "" : "min-h-[420px]"}`}>
-      <div className="mb-4 flex items-center gap-2">
-        <span className="text-xl">🤖</span>
-        <div>
-          <div className="text-sm font-medium">Info Assistant</div>
-          <div className="mono-tag normal-case">Not for urgent emergencies</div>
+    <div className={`flex h-full min-h-0 flex-col ${compact ? "" : "min-h-[420px]"}`}>
+      {!compact && (
+        <div className="mb-4 flex items-center gap-2">
+          <span className="text-xl">🤖</span>
+          <div>
+            <div className="text-sm font-medium">Chat</div>
+            <div className="mono-tag normal-case">Not for urgent emergencies</div>
+          </div>
         </div>
-      </div>
-      <div className="flex-1 space-y-3 overflow-y-auto pr-1">
+      )}
+      <div className="min-h-0 flex-1 space-y-3 overflow-y-auto pr-1">
         {messages.map((m, i) => (
           <div
             key={i}
@@ -103,7 +105,7 @@ export function ChatWidget({ compact = false }: { compact?: boolean }) {
           value={input}
           onChange={(e) => setInput(e.target.value)}
           onKeyDown={(e) => e.key === "Enter" && send()}
-          placeholder="Ask a general safety question…"
+          placeholder="Ask a general safety question..."
           className="flex-1 rounded-xl border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-sm text-white outline-none"
         />
         <button className="btn btn-primary px-4 py-2" onClick={send} disabled={sending}>

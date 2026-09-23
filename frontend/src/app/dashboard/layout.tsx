@@ -1,7 +1,14 @@
+"use client";
+
 import Link from "next/link";
+import { useState } from "react";
 import { DashboardSidebar } from "@/components/DashboardSidebar";
+import { DashboardFloatingActions } from "@/components/DashboardFloatingActions";
+import { SosConfirmModal } from "@/components/SosConfirmModal";
 
 export default function DashboardLayout({ children }: LayoutProps<"/dashboard">) {
+  const [sosOpen, setSosOpen] = useState(false);
+
   return (
     <div className="flex min-h-screen">
       <DashboardSidebar />
@@ -10,17 +17,17 @@ export default function DashboardLayout({ children }: LayoutProps<"/dashboard">)
           <Link href="/" className="font-semibold">
             📡 ResQ AI
           </Link>
-          <Link href="/dashboard/sos" className="btn btn-danger px-3 py-2 text-xs">
+          <button
+            type="button"
+            onClick={() => setSosOpen(true)}
+            className="btn btn-danger px-3 py-2 text-xs"
+          >
             SOS
-          </Link>
+          </button>
         </div>
-        <main className="flex-1 p-4 md:p-8">{children}</main>
-        <Link
-          href="/dashboard/sos"
-          className="fixed bottom-6 right-6 btn btn-danger shadow-lg md:hidden"
-        >
-          🚨 SOS
-        </Link>
+        <main className="flex-1 p-4 pb-28 md:p-8 md:pb-28">{children}</main>
+        <DashboardFloatingActions />
+        <SosConfirmModal open={sosOpen} onClose={() => setSosOpen(false)} />
       </div>
     </div>
   );

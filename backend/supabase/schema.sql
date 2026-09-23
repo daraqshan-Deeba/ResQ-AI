@@ -20,6 +20,8 @@ create table if not exists public.community_reports (
     message text not null,
     reporter_name text,
     verified boolean not null default false,
+    lat double precision,
+    lon double precision,
     created_at timestamptz not null default now()
 );
 

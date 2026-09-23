@@ -56,3 +56,44 @@ def test_classify_report_message():
     assert _classify_report_message("Road under construction near metro") == "construction"
     assert _classify_report_message("Heavy traffic congestion") == "congestion"
     assert _classify_report_message("It is raining") is None
+
+
+def test_community_incidents_filtered_by_radius(monkeypatch):
+    from app.services import traffic_service
+
+    monkeypatch.setattr(
+        "app.services.traffic_service.database_service.list_reports",
+        lambda: [
+            {
+                "id": "near",
+                "area": "Uppal",
+                "lat": 17.3980,
+                "lon": 78.5580,
+                "message": "Multi-vehicle collision on highway exit.",
+                "verified": False,
+            },
+            {
+                "id": "far",
+                "area": "Banjara Hills",
+                "lat": 17.4150,
+                "lon": 78.4350,
+                "message": "Road accident near Road No. 12 junction.",
+                "verified": False,
+            },
+            {
+                "id": "no-coords",
+                "area": "Unknown Place",
+                "message": "Road under construction near metro.",
+                "verified": True,
+            },
+        ],
+    )
+
+    # User near Nacharam / Uppal corridor (matches dashboard screenshot coords)
+    incidents = traffic_service._fetch_community_incidents(
+        17.425914, 78.552289, radius_km=5.0
+    )
+    areas = {i.title.split(" — ")[-1] for i in incidents}
+    assert "Uppal" in areas
+    assert "Banjara Hills" not in areas
+    assert all(i.distance_km is not None and i.distance_km <= 5.0 for i in incidents)

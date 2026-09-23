@@ -9,19 +9,21 @@ export default function SettingsPage() {
 
   async function enableAlerts() {
     if (!("Notification" in window)) {
-      setStatus("Push notifications aren't supported in this browser.");
+      setStatus("This browser does not support alerts.");
       return;
     }
 
     const permission = await Notification.requestPermission();
     if (permission !== "granted") {
-      setStatus("Notifications were not allowed.");
+      setStatus(
+        "Notifications were not allowed. You can turn them on later in your browser settings.",
+      );
       return;
     }
 
     if (!isFirebaseWebConfigured()) {
       setStatus(
-        "Browser permission granted. Add Firebase web config (API key, sender ID, app ID, VAPID) to frontend/.env.local to register with the backend.",
+        "Permission was granted, but alerts are not fully set up on this device yet. Please try again later.",
       );
       return;
     }
@@ -29,7 +31,7 @@ export default function SettingsPage() {
     try {
       const token = await requestFcmToken();
       if (!token) {
-        setStatus("Could not obtain an FCM device token. Check VAPID key and Firebase web app config.");
+        setStatus("Could not finish setting up alerts. Please try again.");
         return;
       }
 
@@ -40,11 +42,11 @@ export default function SettingsPage() {
 
       setStatus(
         res.ok
-          ? "Push alerts enabled. This device is subscribed to SOS notifications."
-          : `Registered locally but backend error: ${res.error}`,
+          ? "Alerts are on. This device can receive SOS and emergency updates."
+          : "Could not save your alert settings. Please try again in a moment.",
       );
     } catch {
-      setStatus("Failed to register for push notifications.");
+      setStatus("Something went wrong while enabling alerts. Please try again.");
     }
   }
 
@@ -54,15 +56,16 @@ export default function SettingsPage() {
         <div className="text-4xl">⚙️</div>
         <h1 className="mt-4 text-2xl font-semibold">Settings</h1>
         <p className="mt-3 text-sm text-slate-400">
-          Enable push alerts to receive SOS and emergency notifications via Firebase
-          Cloud Messaging.
+          Turn on alerts to get SOS and emergency updates on this device, even
+          when the app is in the background.
         </p>
         <button className="btn btn-primary mt-6" onClick={enableAlerts}>
-          🔔 Enable Push Alerts
+          🔔 Turn on alerts
         </button>
         {status && <p className="mt-4 text-sm text-slate-300">{status}</p>}
         <p className="mt-6 text-xs text-slate-500">
-          API backend: {process.env.NEXT_PUBLIC_API_URL ?? "http://127.0.0.1:8000"}
+          You can change notification permission anytime in your browser or
+          device settings.
         </p>
       </div>
     </div>

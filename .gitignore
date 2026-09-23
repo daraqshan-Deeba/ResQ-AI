@@ -1,6 +1,7 @@
 # Python
 __pycache__/
 backend/data/models/*.joblib
+ResQ-AI-validation-package.zip
 .pytest_cache/
 pytest-cache-files-*/
 *.py[cod]

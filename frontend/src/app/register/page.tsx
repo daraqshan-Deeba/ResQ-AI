@@ -8,7 +8,7 @@ export default function RegisterPage() {
         <Link href="/" className="text-xl font-semibold">
           📡 ResQ<span className="text-[var(--accent)]">AI</span>
         </Link>
-        <h1 className="mt-6 text-2xl font-semibold">Complete your profile</h1>
+        <h1 className="mt-6 text-2xl font-semibold">Finish your profile</h1>
         <div className="mt-6">
           <RegistrationForm />
         </div>

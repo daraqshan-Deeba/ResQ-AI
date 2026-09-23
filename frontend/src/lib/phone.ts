@@ -110,7 +110,7 @@ export function validatePhone(dial: string, nationalDigits: string): string | nu
   }
 
   if (national.length < 7 || national.length > 15) {
-    return "Enter a valid phone number (7–15 digits).";
+    return "Enter a valid phone number (7 to 15 digits).";
   }
 
   if (!buildE164(dial, national)) {
