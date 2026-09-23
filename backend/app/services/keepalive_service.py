@@ -7,7 +7,7 @@ import logging
 from typing import Any
 
 from app.core.config import settings
-from app.services import firebase_service, supabase_service
+from app.services import firebase_service, supabase_cache, supabase_service
 from app.services.agent_memory_service import agent_memory_service
 
 logger = logging.getLogger("resq.keepalive")
@@ -70,9 +70,38 @@ def ping_firebase() -> dict[str, Any]:
     }
 
 
+def warm_supabase_cache() -> dict[str, Any]:
+    """Prefetch heavy read lists so the next dashboard request is a cache hit."""
+    if not settings.supabase_cache_enabled:
+        return {"ok": False, "configured": False, "detail": "cache disabled"}
+    if not supabase_service.supabase_available:
+        return {
+            "ok": False,
+            "configured": False,
+            "detail": supabase_service.supabase_error_detail or "not configured",
+        }
+
+    try:
+        hospitals = len(supabase_service.list_hospitals())
+        shelters = len(supabase_service.list_shelters())
+        reports = len(supabase_service.list_reports())
+        return {
+            "ok": True,
+            "configured": True,
+            "hospitals": hospitals,
+            "shelters": shelters,
+            "reports": reports,
+            "cache": supabase_cache.stats(),
+        }
+    except Exception as exc:
+        logger.warning("Supabase cache warm failed: %s", exc)
+        return {"ok": False, "configured": True, "detail": type(exc).__name__}
+
+
 def run_keepalive() -> dict[str, Any]:
     checks = {
         "supabase": ping_supabase(),
+        "supabase_cache": warm_supabase_cache(),
         "redis_agent_memory": ping_redis(),
         "firebase": ping_firebase(),
     }

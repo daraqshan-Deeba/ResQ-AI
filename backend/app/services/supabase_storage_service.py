@@ -65,10 +65,15 @@ def upload_bytes(
     safe_name = PurePosixPath(filename).name.replace(" ", "_") or "upload.bin"
     storage_path = f"{folder}/{uuid.uuid4().hex}_{safe_name}"
 
+    # cacheControl (seconds) enables CDN/browser caching for public objects
     supabase_service.client.storage.from_(_bucket()).upload(
         path=storage_path,
         file=data,
-        file_options={"content-type": mime, "upsert": "false"},
+        file_options={
+            "content-type": mime,
+            "upsert": "false",
+            "cacheControl": "3600",
+        },
     )
 
     return {

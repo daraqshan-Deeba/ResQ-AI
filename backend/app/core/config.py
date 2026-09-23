@@ -182,6 +182,43 @@ class Settings(BaseSettings):
         ),
     )
 
+    # In-process TTL cache for Supabase reads (hospitals / shelters / reports)
+    supabase_cache_enabled: bool = Field(
+        default=True,
+        validation_alias=AliasChoices(
+            "SUPABASE_CACHE_ENABLED",
+            "supabase_cache_enabled",
+        ),
+    )
+    supabase_cache_ttl_hospitals: int = Field(
+        default=300,
+        validation_alias=AliasChoices(
+            "SUPABASE_CACHE_TTL_HOSPITALS",
+            "supabase_cache_ttl_hospitals",
+        ),
+    )
+    supabase_cache_ttl_shelters: int = Field(
+        default=120,
+        validation_alias=AliasChoices(
+            "SUPABASE_CACHE_TTL_SHELTERS",
+            "supabase_cache_ttl_shelters",
+        ),
+    )
+    supabase_cache_ttl_reports: int = Field(
+        default=60,
+        validation_alias=AliasChoices(
+            "SUPABASE_CACHE_TTL_REPORTS",
+            "supabase_cache_ttl_reports",
+        ),
+    )
+    supabase_cache_ttl_default: int = Field(
+        default=120,
+        validation_alias=AliasChoices(
+            "SUPABASE_CACHE_TTL_DEFAULT",
+            "supabase_cache_ttl_default",
+        ),
+    )
+
     model_config = SettingsConfigDict(
         env_file=str(_BACKEND_ENV),
         env_file_encoding="utf-8",

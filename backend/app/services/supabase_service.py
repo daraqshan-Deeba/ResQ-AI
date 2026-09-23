@@ -7,6 +7,7 @@ from datetime import datetime, timezone
 from typing import Any, Optional
 
 from app.core.config import settings
+from app.services import supabase_cache
 
 logger = logging.getLogger("resq.supabase")
 
@@ -65,10 +66,13 @@ def _table(name: str):
 def list_shelters() -> list[dict]:
     if not supabase_available:
         return []
+    cached = supabase_cache.get(supabase_cache.KEY_SHELTERS)
+    if cached is not None:
+        return cached
     try:
         response = _table("shelters").select("*").execute()
         rows = response.data or []
-        return [
+        result = [
             {
                 "id": str(row["id"]),
                 "name": row["name"],
@@ -81,6 +85,8 @@ def list_shelters() -> list[dict]:
             }
             for row in rows
         ]
+        supabase_cache.set(supabase_cache.KEY_SHELTERS, result)
+        return result
     except Exception as exc:
         logger.warning("list_shelters failed: %s", exc)
         return []
@@ -98,12 +104,16 @@ def add_shelter(data: dict) -> str:
     response = _table("shelters").insert(payload).execute()
     if not response.data:
         raise RuntimeError("Supabase insert returned no data for shelter")
+    supabase_cache.invalidate(supabase_cache.KEY_SHELTERS)
     return str(response.data[0]["id"])
 
 
 def list_reports() -> list[dict]:
     if not supabase_available:
         return []
+    cached = supabase_cache.get(supabase_cache.KEY_REPORTS)
+    if cached is not None:
+        return cached
     try:
         response = (
             _table("community_reports")
@@ -112,7 +122,9 @@ def list_reports() -> list[dict]:
             .execute()
         )
         rows = response.data or []
-        return [_format_report(row) for row in rows]
+        result = [_format_report(row) for row in rows]
+        supabase_cache.set(supabase_cache.KEY_REPORTS, result)
+        return result
     except Exception as exc:
         logger.warning("list_reports failed: %s", exc)
         return []
@@ -148,6 +160,7 @@ def add_report(
     response = _table("community_reports").insert(payload).execute()
     if not response.data:
         raise RuntimeError("Supabase insert returned no data for report")
+    supabase_cache.invalidate(supabase_cache.KEY_REPORTS)
     row = response.data[0]
     return _format_report(row)
 
@@ -274,6 +287,9 @@ def _format_hospital(row: dict) -> dict:
 def list_hospitals() -> list[dict]:
     if not supabase_available:
         return []
+    cached = supabase_cache.get(supabase_cache.KEY_HOSPITALS)
+    if cached is not None:
+        return cached
     try:
         rows: list[dict] = []
         page_size = 1000
@@ -290,6 +306,7 @@ def list_hospitals() -> list[dict]:
             if len(batch) < page_size:
                 break
             offset += page_size
+        supabase_cache.set(supabase_cache.KEY_HOSPITALS, rows)
         return rows
     except Exception as exc:
         logger.warning("list_hospitals failed: %s", exc)
@@ -308,6 +325,7 @@ def add_hospital(data: dict) -> str:
     response = _table("hospitals").insert(_hospital_payload(data)).execute()
     if not response.data:
         raise RuntimeError("Supabase insert returned no data for hospital")
+    supabase_cache.invalidate(supabase_cache.KEY_HOSPITALS)
     return str(response.data[0]["id"])
 
 
@@ -331,6 +349,8 @@ def add_hospitals_batch(rows: list[dict], *, chunk_size: int = 200) -> int:
                     inserted += 1
                 except Exception:
                     continue
+    if inserted:
+        supabase_cache.invalidate(supabase_cache.KEY_HOSPITALS)
     return inserted
 
 
@@ -343,6 +363,7 @@ def clear_hospitals() -> int:
             return 0
         # Delete all rows (neq filter is required when no id is specified).
         _table("hospitals").delete().neq("id", "00000000-0000-0000-0000-000000000000").execute()
+        supabase_cache.invalidate(supabase_cache.KEY_HOSPITALS)
         return count
     except Exception as exc:
         logger.warning("clear_hospitals failed: %s", exc)
@@ -352,6 +373,9 @@ def clear_hospitals() -> int:
 def count_hospitals() -> int:
     if not supabase_available or client is None:
         return 0
+    cached = supabase_cache.get(supabase_cache.KEY_HOSPITALS)
+    if isinstance(cached, list):
+        return len(cached)
     try:
         response = client.table("hospitals").select("id", count="exact").execute()
         return response.count or len(response.data or [])
