@@ -6,6 +6,7 @@ from app.blueprints import (
     chat_bp,
     device_bp,
     hospitals_bp,
+    keepalive_bp,
     knowledge_bp,
     ml_bp,
     reports_bp,
@@ -34,6 +35,7 @@ def create_app() -> Flask:
     app.register_blueprint(weather_bp)
     app.register_blueprint(hospitals_bp)
     app.register_blueprint(shelters_bp)
+    app.register_blueprint(keepalive_bp)
     app.register_blueprint(knowledge_bp)
     app.register_blueprint(ml_bp)
     app.register_blueprint(reports_bp)

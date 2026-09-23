@@ -2,6 +2,7 @@ from app.blueprints.assessment import bp as assessment_bp
 from app.blueprints.chat import bp as chat_bp
 from app.blueprints.device import bp as device_bp
 from app.blueprints.hospitals import bp as hospitals_bp
+from app.blueprints.keepalive import bp as keepalive_bp
 from app.blueprints.knowledge import bp as knowledge_bp
 from app.blueprints.ml import bp as ml_bp
 from app.blueprints.reports import bp as reports_bp
@@ -16,6 +17,7 @@ __all__ = [
     "chat_bp",
     "device_bp",
     "hospitals_bp",
+    "keepalive_bp",
     "knowledge_bp",
     "ml_bp",
     "reports_bp",

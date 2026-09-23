@@ -164,6 +164,16 @@ class Settings(BaseSettings):
         validation_alias=AliasChoices("TRIAGE_ML_ENABLED", "triage_ml_enabled"),
     )
 
+    # Vercel Cron / external keep-alive scheduler
+    cron_secret: str = Field(
+        default="",
+        validation_alias=AliasChoices("CRON_SECRET", "cron_secret"),
+    )
+    keepalive_secret: str = Field(
+        default="",
+        validation_alias=AliasChoices("KEEPALIVE_SECRET", "keepalive_secret"),
+    )
+
     supabase_max_upload_bytes: int = Field(
         default=5 * 1024 * 1024,
         validation_alias=AliasChoices(
