@@ -79,7 +79,9 @@ INCLUDE_PATHS = [
     "frontend/src/lib/api.ts",
     "frontend/src/components/AssessmentResultPanel.tsx",
     "frontend/src/app/api/cron/keepalive/route.ts",
+    "frontend/src/app/api/health/route.ts",
     "frontend/src/lib/keepalive.ts",
+    ".github/workflows/keepalive.yml",
 ]
 
 MANIFEST = """# ResQ-AI — External validation package

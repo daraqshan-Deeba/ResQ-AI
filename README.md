@@ -18,7 +18,7 @@ Google login & registration setup: [`docs/auth-setup.md`](docs/auth-setup.md)
 
 Secrets & env layout: [`docs/security-secrets.md`](docs/security-secrets.md)
 
-Vercel Cron keep-alive (Hobby = once/day): [`docs/vercel-cron-keepalive.md`](docs/vercel-cron-keepalive.md)
+Vercel Cron keep-alive (Hobby = once/day; GitHub Actions every 5m for anti cold-start): [`docs/vercel-cron-keepalive.md`](docs/vercel-cron-keepalive.md)
 
 ---
 

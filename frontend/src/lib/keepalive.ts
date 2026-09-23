@@ -7,6 +7,7 @@ export type KeepaliveCheck = {
   detail?: string | null;
   latency_ms?: number;
   shelters_count?: number | null;
+  routes?: Record<string, number>;
 };
 
 export type KeepaliveReport = {
@@ -14,10 +15,33 @@ export type KeepaliveReport = {
   triggered_at: string;
   schedule: string | null;
   checks: {
+    frontend: KeepaliveCheck;
     supabase: KeepaliveCheck;
     backend: KeepaliveCheck;
   };
 };
+
+function appBaseUrl(): string | null {
+  const explicit =
+    process.env.NEXT_PUBLIC_APP_URL?.trim() ||
+    process.env.KEEPALIVE_APP_URL?.trim() ||
+    "";
+  if (explicit) {
+    return explicit.replace(/\/$/, "");
+  }
+
+  const production = process.env.VERCEL_PROJECT_PRODUCTION_URL?.trim();
+  if (production) {
+    return `https://${production.replace(/^https?:\/\//, "")}`;
+  }
+
+  const deployment = process.env.VERCEL_URL?.trim();
+  if (deployment) {
+    return `https://${deployment.replace(/^https?:\/\//, "")}`;
+  }
+
+  return null;
+}
 
 function supabaseAdminConfig() {
   const url =
@@ -40,6 +64,51 @@ async function timed<T>(fn: () => Promise<T>): Promise<{ result: T; latency_ms: 
   const started = Date.now();
   const result = await fn();
   return { result, latency_ms: Date.now() - started };
+}
+
+/** Warm the Next.js app routes so visitors avoid cold starts. */
+export async function pingFrontend(): Promise<KeepaliveCheck> {
+  const base = appBaseUrl();
+  if (!base) {
+    return {
+      ok: false,
+      configured: false,
+      detail: "NEXT_PUBLIC_APP_URL / VERCEL_URL not set",
+    };
+  }
+
+  const paths = ["/api/health", "/"];
+  const routes: Record<string, number> = {};
+
+  try {
+    const { latency_ms } = await timed(async () => {
+      for (const path of paths) {
+        const started = Date.now();
+        const response = await fetch(`${base}${path}`, {
+          method: "GET",
+          cache: "no-store",
+          redirect: "follow",
+          signal: AbortSignal.timeout(15_000),
+          headers: { "User-Agent": "ResQ-Keepalive/1.0" },
+        });
+        routes[path] = Date.now() - started;
+        if (!response.ok && response.status >= 500) {
+          throw new Error(`${path} returned ${response.status}`);
+        }
+        // Drain body so the connection is fully used
+        await response.arrayBuffer().catch(() => undefined);
+      }
+    });
+
+    return { ok: true, configured: true, latency_ms, routes };
+  } catch (error) {
+    return {
+      ok: false,
+      configured: true,
+      detail: error instanceof Error ? error.message : "frontend warm failed",
+      routes,
+    };
+  }
 }
 
 export async function pingSupabase(): Promise<KeepaliveCheck> {
@@ -121,9 +190,13 @@ export async function pingBackend(): Promise<KeepaliveCheck> {
 }
 
 export async function runKeepalive(schedule: string | null): Promise<KeepaliveReport> {
-  const [supabase, backend] = await Promise.all([pingSupabase(), pingBackend()]);
+  const [frontend, supabase, backend] = await Promise.all([
+    pingFrontend(),
+    pingSupabase(),
+    pingBackend(),
+  ]);
 
-  const configured = [supabase, backend].filter((check) => check.configured);
+  const configured = [frontend, supabase, backend].filter((check) => check.configured);
   const healthy = configured.filter((check) => check.ok);
   const status =
     configured.length === 0
@@ -136,6 +209,6 @@ export async function runKeepalive(schedule: string | null): Promise<KeepaliveRe
     status,
     triggered_at: new Date().toISOString(),
     schedule,
-    checks: { supabase, backend },
+    checks: { frontend, supabase, backend },
   };
 }

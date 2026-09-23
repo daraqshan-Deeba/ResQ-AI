@@ -1,0 +1,75 @@
+# Keep the Vercel frontend (and chained backend / Supabase) warm.
+# Vercel Hobby cron can only run once per day — that is not enough to avoid cold starts.
+# This workflow pings every 5 minutes from GitHub Actions instead.
+
+name: Keepalive (anti cold-start)
+
+on:
+  schedule:
+    # Every 5 minutes
+    - cron: "*/5 * * * *"
+  workflow_dispatch:
+
+concurrency:
+  group: keepalive-warm
+  cancel-in-progress: true
+
+jobs:
+  warm:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - name: Require secrets
+        env:
+          APP_URL: ${{ secrets.KEEPALIVE_APP_URL }}
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+        run: |
+          if [ -z "$APP_URL" ]; then
+            echo "::error::Set repository secret KEEPALIVE_APP_URL (e.g. https://your-app.vercel.app)"
+            exit 1
+          fi
+          if [ -z "$CRON_SECRET" ]; then
+            echo "::error::Set repository secret CRON_SECRET (same value as on Vercel)"
+            exit 1
+          fi
+
+      - name: Warm health + home (no auth)
+        env:
+          APP_URL: ${{ secrets.KEEPALIVE_APP_URL }}
+        run: |
+          set -euo pipefail
+          BASE="${APP_URL%/}"
+          echo "GET $BASE/api/health"
+          curl -fsS --max-time 20 -H "User-Agent: ResQ-Keepalive/GitHub" \
+            "$BASE/api/health" | tee /tmp/health.json
+          echo
+          echo "GET $BASE/"
+          # Home may redirect (auth) — accept 2xx/3xx
+          CODE=$(curl -sS -o /dev/null -w "%{http_code}" --max-time 25 \
+            -H "User-Agent: ResQ-Keepalive/GitHub" "$BASE/")
+          echo "home status=$CODE"
+          case "$CODE" in
+            2*|3*) ;;
+            *) echo "::warning::Home returned $CODE (still warmed the edge)" ;;
+          esac
+
+      - name: Full cron keepalive (Supabase + Flask)
+        env:
+          APP_URL: ${{ secrets.KEEPALIVE_APP_URL }}
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+        run: |
+          set -euo pipefail
+          BASE="${APP_URL%/}"
+          echo "GET $BASE/api/cron/keepalive"
+          HTTP=$(curl -sS -o /tmp/keepalive.json -w "%{http_code}" --max-time 45 \
+            -H "Authorization: Bearer ${CRON_SECRET}" \
+            -H "User-Agent: ResQ-Keepalive/GitHub" \
+            "$BASE/api/cron/keepalive")
+          echo "status=$HTTP"
+          cat /tmp/keepalive.json
+          echo
+          # 200 ok, 207 multi-status/degraded still means the app was warmed
+          if [ "$HTTP" != "200" ] && [ "$HTTP" != "207" ]; then
+            echo "::error::Keepalive failed with HTTP $HTTP"
+            exit 1
+          fi
