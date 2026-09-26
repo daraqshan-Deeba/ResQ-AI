@@ -1,12 +1,12 @@
 flask[async]==3.0.3
 flask-cors==5.0.0
-pydantic==2.11.7
+pydantic==2.11.2
 pydantic-settings==2.5.2
 python-dotenv==1.0.1
 PyJWT>=2.12.0,<3
 
 # Weather — Sentinel risk agent
-httpx==0.27.2
+httpx==0.28.1
 
 # LLM — Responder + Get Help Now agent (Groq, OpenAI-compatible API)
 # called via httpx directly, no extra SDK needed
