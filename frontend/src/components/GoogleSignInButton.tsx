@@ -24,11 +24,6 @@ export function GoogleSignInButton({ label = "Continue with Google" }: { label?:
       provider: "google",
       options: {
         redirectTo: `${window.location.origin}/auth/callback`,
-        scopes: "openid email profile",
-        queryParams: {
-          access_type: "offline",
-          prompt: "select_account",
-        },
       },
     });
     if (authError) {
