@@ -29,15 +29,23 @@ def _call_line(*, emergency_contact_phone: str | None, emergency_contact_name: s
         label = emergency_contact_name or "your emergency contact"
         parts.append(f"Also call {label} at {emergency_contact_phone}.")
     else:
-        parts.append("Add an emergency contact in Settings so they can be listed here.")
+        parts.append("Add an emergency contact in Settings so we can SMS them.")
     return " ".join(parts)
 
 
-def _sms_line(sms_status: str) -> str:
+def _sms_line(sms_status: str, *, has_contact: bool) -> str:
     if sms_status == "sent":
         return " An SMS was sent to your emergency contact."
     if sms_status == "failed":
         return " We could not send the SMS to your emergency contact."
+    if sms_status == "skipped" and has_contact:
+        return " The SMS to your emergency contact was not sent."
+    return ""
+
+
+def _device_line(notification_status: str) -> str:
+    if notification_status == "notification_accepted":
+        return " An alert was sent to your registered devices."
     return ""
 
 
@@ -130,7 +138,7 @@ def dispatch_sos(
         "has_location": has_location,
     }
     sms_status: SmsStatus = send_sos_sms(**notify_kwargs)
-    sms_note = _sms_line(sms_status)
+    sms_note = _sms_line(sms_status, has_contact=bool(emergency_contact_phone))
 
     tokens = database_service.list_device_tokens(user_id=user_id)
     if not tokens or not database_service.push_available():
@@ -147,9 +155,7 @@ def dispatch_sos(
             status="recorded",
             notification_status="notification_disabled",
             maps_link=maps_link,
-            message=(
-                f"SOS recorded. No private device alert was sent.{sms_note} {call_112}{loc}"
-            ),
+            message=f"SOS recorded.{sms_note} {call_112}{loc}",
             emergency_contact_phone=emergency_contact_phone,
             sms_status=sms_status,
         )
@@ -182,7 +188,7 @@ def dispatch_sos(
             notification_status="notification_accepted",
             maps_link=maps_link,
             message=(
-                f"SOS recorded and an alert was sent to your registered devices.{sms_note} "
+                f"SOS recorded.{_device_line('notification_accepted')}{sms_note} "
                 f"{call_112}{loc}"
             ),
             emergency_contact_phone=emergency_contact_phone,
@@ -205,7 +211,7 @@ def dispatch_sos(
             status="recorded",
             notification_status="notification_failed",
             maps_link=maps_link,
-            message=f"SOS recorded, but the device alert failed.{sms_note} {call_112} Location: {maps_link}",
+            message=f"SOS recorded, but a device alert failed.{sms_note} {call_112} Location: {maps_link}",
             emergency_contact_phone=emergency_contact_phone,
             sms_status=sms_status,
         )

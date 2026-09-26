@@ -69,25 +69,26 @@ def current_user_id() -> str | None:
 
 def require_write_auth(fn: Callable):
     def _authorize():
-        if not settings.api_auth_required:
-            return None
         header = request.headers.get("Authorization", "")
-        if not header.startswith("Bearer "):
-            return jsonify({"detail": "Authentication required"}), 401
-        token = header[7:].strip()
+        token = header[7:].strip() if header.startswith("Bearer ") else ""
         secret = settings.supabase_jwt_secret.strip()
-        if not secret:
+
+        if token and secret:
+            try:
+                payload = jwt.decode(
+                    token,
+                    secret,
+                    algorithms=["HS256"],
+                    options={"verify_aud": False},
+                )
+                g.user_id = payload.get("sub")
+            except jwt.PyJWTError:
+                if settings.api_auth_required:
+                    return jsonify({"detail": "Invalid or expired token"}), 401
+        elif settings.api_auth_required:
+            if not token:
+                return jsonify({"detail": "Authentication required"}), 401
             return jsonify({"detail": "Auth is not configured"}), 503
-        try:
-            payload = jwt.decode(
-                token,
-                secret,
-                algorithms=["HS256"],
-                options={"verify_aud": False},
-            )
-        except jwt.PyJWTError:
-            return jsonify({"detail": "Invalid or expired token"}), 401
-        g.user_id = payload.get("sub")
         return None
 
     if inspect.iscoroutinefunction(fn):

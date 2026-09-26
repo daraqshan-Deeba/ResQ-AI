@@ -33,6 +33,7 @@ def test_sos_includes_emergency_contact(monkeypatch):
     monkeypatch.setattr("app.services.database_service.list_device_tokens", lambda user_id=None: [])
     monkeypatch.setattr("app.services.database_service.update_sos_record", lambda *a, **k: None)
     monkeypatch.setattr("app.services.database_service.push_available", lambda: False)
+    monkeypatch.setattr("app.services.sos_dispatch.send_sos_sms", lambda **k: "sent")
 
     client = app.test_client()
     res = client.post("/api/sos", json={"lat": 17.385, "lon": 78.4867})
@@ -40,6 +41,47 @@ def test_sos_includes_emergency_contact(monkeypatch):
     body = res.get_json()
     assert body["emergency_contact_phone"] == "+919999999999"
     assert "919999999999" in body["message"] or "Priya" in body["message"]
+    assert "Add an emergency contact" not in body["message"]
+    assert "No private device alert" not in body["message"]
+
+
+def test_sos_jwt_loads_profile_contact(monkeypatch):
+    import jwt as pyjwt
+    from app.core.config import settings
+
+    seen: dict[str, str | None] = {}
+
+    def fake_contact(uid):
+        seen["uid"] = uid
+        return {
+            "name": "Mehraj Fathima",
+            "phone": "+917981900658",
+            "relation": "mother",
+            "user_name": "User",
+        }
+
+    monkeypatch.setattr("app.services.database_service.get_emergency_contact", fake_contact)
+    monkeypatch.setattr("app.services.database_service.create_sos_record", lambda data: "evt-jwt")
+    monkeypatch.setattr("app.services.database_service.list_device_tokens", lambda user_id=None: [])
+    monkeypatch.setattr("app.services.database_service.update_sos_record", lambda *a, **k: None)
+    monkeypatch.setattr("app.services.database_service.push_available", lambda: False)
+    monkeypatch.setattr("app.services.sos_dispatch.send_sos_sms", lambda **k: "sent")
+
+    secret = settings.supabase_jwt_secret.strip() or "test-secret"
+    monkeypatch.setattr(settings, "supabase_jwt_secret", secret)
+    token = pyjwt.encode({"sub": "user-abc"}, secret, algorithm="HS256")
+
+    client = app.test_client()
+    res = client.post(
+        "/api/sos",
+        json={"lat": 17.385, "lon": 78.4867},
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert res.status_code == 200
+    assert seen.get("uid") == "user-abc"
+    body = res.get_json()
+    assert "SMS was sent" in body["message"]
+    assert "Add an emergency contact" not in body["message"]
 
 
 def test_sos_without_location_still_records(monkeypatch):
