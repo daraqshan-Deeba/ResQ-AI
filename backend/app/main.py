@@ -29,6 +29,8 @@ def create_app() -> Flask:
         app,
         resources={r"/api/*": {"origins": settings.cors_origin_list}},
         supports_credentials=True,
+        allow_headers=["Authorization", "Content-Type"],
+        methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
     )
 
     app.register_blueprint(assessment_bp)
