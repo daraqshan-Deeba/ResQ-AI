@@ -101,10 +101,7 @@ class Settings(BaseSettings):
     )
 
     cors_origins: str = Field(
-        default=(
-            "http://localhost:3000,http://127.0.0.1:3000,"
-            "https://res-q-ai-one.vercel.app"
-        ),
+        default="*",
         validation_alias=AliasChoices("CORS_ORIGINS", "cors_origins"),
     )
 
@@ -285,11 +282,7 @@ class Settings(BaseSettings):
 
     @property
     def cors_origin_list(self) -> list[str]:
-        origins = [o.strip() for o in self.cors_origins.split(",") if o.strip()]
-        preview = r"https://.*\.vercel\.app"
-        if preview not in origins:
-            origins.append(preview)
-        return origins
+        return ["*"]
 
     @property
     def is_groq_available(self) -> bool:

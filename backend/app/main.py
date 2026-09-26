@@ -27,10 +27,13 @@ def create_app() -> Flask:
 
     CORS(
         app,
-        resources={r"/api/*": {"origins": settings.cors_origin_list}},
-        supports_credentials=True,
-        allow_headers=["Authorization", "Content-Type"],
-        methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+        resources={r"/*": {"origins": "*"}},
+        supports_credentials=False,
+        send_wildcard=True,
+        always_send=True,
+        allow_headers="*",
+        expose_headers="*",
+        methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS", "HEAD"],
     )
 
     app.register_blueprint(assessment_bp)
