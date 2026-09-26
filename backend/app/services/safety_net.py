@@ -16,7 +16,27 @@ _CRITICAL_PATTERNS: list[tuple[str, re.Pattern]] = [
 ]
 
 _HIGH_PATTERNS: list[tuple[str, re.Pattern]] = [
-    ("fire", re.compile(r"\b(fire|flames|smoke everywhere|building (is )?on fire|aag lag)\b", re.I)),
+    (
+        "fire",
+        re.compile(
+            r"\b(smoke everywhere|aag lag(?:i| gayi| gaye)?)\b"
+            r"|\b(?:fire|flames)\b.{0,48}\b(?:house|home|building|apartment|flat|kitchen|room|office|warehouse)\b"
+            r"|\b(?:house|home|building|apartment|flat|kitchen|room|office|warehouse)\b.{0,48}\b(?:on fire|in flames|catching fire|\bfire\b)\b"
+            r"|\b(?:clothes|clothing|shirt|dress).{0,24}on fire\b"
+            r"|\bi(?:'m| am) on fire\b",
+            re.I,
+        ),
+    ),
+    (
+        "burn",
+        re.compile(
+            r"\b(?:phone|mobile|cellphone|laptop|charger|battery|power bank).{0,48}\b(?:flames|on fire|caught fire|catching fire|exploded|burst into)\b"
+            r"|\b(?:flames|on fire|caught fire).{0,48}\b(?:phone|mobile|cellphone|laptop|charger)\b"
+            r"|\b(?:burnt|burned|burning)\s+(?:my\s+)?(?:hand|hands|arm|finger|fingers|skin|face|leg|palm)\b"
+            r"|\bburns? on (?:my )?(?:hand|arm|skin|finger)\b",
+            re.I,
+        ),
+    ),
     ("gas_leak", re.compile(r"\b(gas leak|smell(s)? (of )?gas|lpg leak)\b", re.I)),
     ("assault", re.compile(r"\b(attacking me|being attacked|stabbed|gunshot|weapon)\b", re.I)),
 ]
@@ -53,6 +73,8 @@ def detect_life_threats(text: str) -> SafetyNetResult:
 def _protocol_for_hits(hits: list[str]) -> str:
     if "fire" in hits:
         return "fire"
+    if "burn" in hits:
+        return "burn"
     if "gas_leak" in hits:
         return "gas_leak"
     if "cardiac" in hits or "not_breathing" in hits or "choking" in hits:

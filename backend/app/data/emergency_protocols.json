@@ -227,6 +227,29 @@
       ],
       "explanation": "Deterministic fire protocol: evacuate first, then call emergency services."
     },
+    "burn": {
+      "immediate_actions": [
+        "Get away from the burning device. Unplug it or switch off power only if you can do so without touching the device.",
+        "Cool the burn under cool running water for 20 minutes. Do not use ice, butter, oil, or toothpaste.",
+        "Remove tight rings or watches near the burn if they come off easily; do not peel stuck clothing.",
+        "Cover loosely with a clean, dry cloth and call 108 if the burn is larger than your palm, on the face or hands, or blistering badly."
+      ],
+      "safety_warnings": [
+        "Do not throw water on a device that is still plugged in or sparking.",
+        "Do not burst blisters or put cotton wool directly on the burn.",
+        "Do not use the elevator-evacuation steps meant for a building fire unless the room or building is actually on fire."
+      ],
+      "when_to_seek_help": [
+        "The burn is deep, white, charred, or larger than the palm of a hand.",
+        "You have trouble breathing, or the burn is on the face, hands, joints, or genitals.",
+        "The device is still smoking, sparking, or has set nearby objects on fire."
+      ],
+      "questions_to_ask_user": [
+        "Is the phone or charger still plugged in or sparking?",
+        "How large is the burn, and is the skin blistering?"
+      ],
+      "explanation": "Device or thermal burn: separate from power, cool the skin, then get medical help. This is not a building-evacuation protocol."
+    },
     "gas_leak": {
       "immediate_actions": [
         "Do not switch lights or electrical devices on or off.",

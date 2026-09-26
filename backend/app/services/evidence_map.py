@@ -18,6 +18,7 @@ _MAP: dict[str, frozenset[EvidenceKind]] = {
     "structural_damage": frozenset({"hospitals", "reports"}),
     "unclassified": frozenset({"hospitals", "reports"}),
     "fire": frozenset({"hospitals"}),
+    "burn": frozenset({"hospitals"}),
     "gas_leak": frozenset({"hospitals"}),
     "medical_emergency": frozenset({"hospitals"}),
     "drowning": frozenset({"hospitals"}),

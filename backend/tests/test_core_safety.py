@@ -27,6 +27,31 @@ def test_fire_safety_net_forces_high():
     hit = detect_life_threats("fire in my building and smoke everywhere")
     assert "fire" in hit.hits
     assert hit.forced_level in {"High", "Critical"}
+    assert hit.protocol_key == "fire"
+
+
+def test_phone_flames_is_burn_not_building_fire():
+    text = "my phone turned into flames and i burnt my hand"
+    hit = detect_life_threats(text)
+    assert "fire" not in hit.hits
+    assert "burn" in hit.hits
+    assert hit.protocol_key == "burn"
+    assert hit.forced_level == "High"
+
+
+def test_phone_burn_assessment_uses_burn_protocol():
+    with patch("app.services.weather_service.get_weather_safe", new_callable=AsyncMock) as mock_w, \
+         patch("app.services.action_planner_service.call_groq_safe", new_callable=AsyncMock) as mock_g:
+        mock_w.return_value = ServiceResult(available=False, error_type="timeout")
+        mock_g.return_value = ServiceResult(available=False, error_type="service_disabled")
+        res = _run(orchestrate_emergency_assessment(
+            description="my phone turned into flames and i burnt my hand",
+        ))
+    assert res.protocol_key == "burn"
+    plan_text = " ".join(res.action_plan.immediate_actions).lower()
+    assert "leave the building" not in plan_text
+    assert "cool" in plan_text
+    assert res.emergency_level in {"High", "Critical"}
 
 
 def test_chest_pain_is_critical():
