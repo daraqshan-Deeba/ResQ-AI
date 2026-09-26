@@ -21,6 +21,8 @@ frontend/.env.local
 # Large raw source datasets (see backend/data/sources/README.md)
 backend/data/sources/**/*.kml
 backend/data/downloads/
+backend/data/synthetic/*.jsonl.gz
+backend/data/synthetic/triage_synthetic_manifest.json
 *.kml
 
 # Firebase / frontend secrets

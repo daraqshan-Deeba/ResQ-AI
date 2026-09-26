@@ -27,6 +27,12 @@ def disable_supabase_for_tests(monkeypatch):
 
 
 @pytest.fixture(autouse=True)
+def disable_fast2sms_for_tests(monkeypatch):
+    """Isolate tests from live Fast2SMS credentials in developer .env."""
+    monkeypatch.setattr("app.core.config.settings.fast2sms_api_key", "")
+
+
+@pytest.fixture(autouse=True)
 def disable_firebase_for_tests(monkeypatch):
     """Isolate tests from live Firebase credentials in developer .env."""
     monkeypatch.setattr("app.services.firebase_service.firebase_available", False)

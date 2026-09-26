@@ -3,7 +3,7 @@
   "updated": "2026-09-10",
   "description": "Gold-label triage benchmark for ResQ AI classification regression testing.",
   "category_definitions": "triage_category_definitions.json",
-  "case_count": 178,
+  "case_count": 181,
   "cases": [
     {
       "id": "floo-t1-01",
@@ -1320,6 +1320,30 @@
       "expected_category": "accident",
       "suite": "multilingual",
       "source": "triage_ml_training.json"
+    },
+    {
+      "id": "inj-hold-rtc-01",
+      "text": "I was travelling from RTC BUS and I fell. I am unable to walk",
+      "expected_category": "injury",
+      "suite": "tier1",
+      "max_tier": 1,
+      "source": "holdout-fall-mobility"
+    },
+    {
+      "id": "inj-hold-rtc-02",
+      "text": "I slipped and cannot walk",
+      "expected_category": "injury",
+      "suite": "tier1",
+      "max_tier": 1,
+      "source": "holdout-fall-mobility"
+    },
+    {
+      "id": "inj-hold-rtc-03",
+      "text": "I fell down and can't get up",
+      "expected_category": "injury",
+      "suite": "tier1",
+      "max_tier": 1,
+      "source": "holdout-fall-mobility"
     }
   ]
 }

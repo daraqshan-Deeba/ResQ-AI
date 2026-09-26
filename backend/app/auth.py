@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import inspect
 import time
 from functools import wraps
 from typing import Callable
@@ -25,17 +26,36 @@ def _client_key() -> str:
     return request.remote_addr or "unknown"
 
 
+def _rate_limited_response():
+    return jsonify({"detail": "Too many requests. Call 112 if this is an emergency."}), 429
+
+
+def _bump_or_block(fn_name: str, max_calls: int, window_sec: float):
+    key = f"{fn_name}:{_client_key()}"
+    now = time.monotonic()
+    stamps = [t for t in _buckets.get(key, []) if now - t < window_sec]
+    if len(stamps) >= max_calls:
+        return True
+    stamps.append(now)
+    _buckets[key] = stamps
+    return False
+
+
 def rate_limit(max_calls: int = 20, window_sec: float = 60.0):
     def decorator(fn: Callable):
+        if inspect.iscoroutinefunction(fn):
+            @wraps(fn)
+            async def async_wrapped(*args, **kwargs):
+                if _bump_or_block(fn.__name__, max_calls, window_sec):
+                    return _rate_limited_response()
+                return await fn(*args, **kwargs)
+
+            return async_wrapped
+
         @wraps(fn)
         def wrapped(*args, **kwargs):
-            key = f"{fn.__name__}:{_client_key()}"
-            now = time.monotonic()
-            stamps = [t for t in _buckets.get(key, []) if now - t < window_sec]
-            if len(stamps) >= max_calls:
-                return jsonify({"detail": "Too many requests. Call 112 if this is an emergency."}), 429
-            stamps.append(now)
-            _buckets[key] = stamps
+            if _bump_or_block(fn.__name__, max_calls, window_sec):
+                return _rate_limited_response()
             return fn(*args, **kwargs)
 
         return wrapped
@@ -48,10 +68,9 @@ def current_user_id() -> str | None:
 
 
 def require_write_auth(fn: Callable):
-    @wraps(fn)
-    def wrapped(*args, **kwargs):
+    def _authorize():
         if not settings.api_auth_required:
-            return fn(*args, **kwargs)
+            return None
         header = request.headers.get("Authorization", "")
         if not header.startswith("Bearer "):
             return jsonify({"detail": "Authentication required"}), 401
@@ -69,6 +88,23 @@ def require_write_auth(fn: Callable):
         except jwt.PyJWTError:
             return jsonify({"detail": "Invalid or expired token"}), 401
         g.user_id = payload.get("sub")
+        return None
+
+    if inspect.iscoroutinefunction(fn):
+        @wraps(fn)
+        async def async_wrapped(*args, **kwargs):
+            blocked = _authorize()
+            if blocked is not None:
+                return blocked
+            return await fn(*args, **kwargs)
+
+        return async_wrapped
+
+    @wraps(fn)
+    def wrapped(*args, **kwargs):
+        blocked = _authorize()
+        if blocked is not None:
+            return blocked
         return fn(*args, **kwargs)
 
     return wrapped

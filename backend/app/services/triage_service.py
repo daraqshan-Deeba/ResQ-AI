@@ -71,6 +71,10 @@ def _normalize(text: str) -> str:
     text = text.lower()
     # Replace hyphens/en-dashes with spaces so "snake-bite" → "snake bite"
     text = re.sub(r"[-–—]", " ", text)
+    # Keep apostrophes (can't walk); turn common ASCII punctuation into spaces
+    # so "i fell, my leg got sprained" still matches. Do not use [^\w] — that
+    # can drop Devanagari/Telugu letters depending on regex flags.
+    text = re.sub(r"[,.;:!?()\[\]{}\"/\\|+*=<>@#$%^&~`]", " ", text)
     # Collapse repeated whitespace / newlines
     text = re.sub(r"\s+", " ", text)
     # Strip leading/trailing whitespace
@@ -93,9 +97,14 @@ _TIER1_RULES: dict[str, list[tuple[str, re.Pattern]]] = {}
 
 def _phrase(label: str, *phrases: str) -> tuple[str, re.Pattern]:
     """Create a (label, compiled_regex) pair for a set of alternative phrases."""
-    alternatives = "|".join(
-        r"\b" + re.escape(p) + r"\b" for p in phrases
-    )
+    parts: list[str] = []
+    for phrase in phrases:
+        escaped = re.escape(phrase)
+        if any(ord(char) > 127 for char in phrase):
+            parts.append(escaped)
+        else:
+            parts.append(r"\b" + escaped + r"\b")
+    alternatives = "|".join(parts)
     return (label, re.compile(alternatives, re.IGNORECASE))
 
 
@@ -104,6 +113,9 @@ _TIER1_RULES["flooding"] = [
             "ghar mein pani", "pani aa raha hai", "pani badh raha hai", "pani tez badh raha hai",
             "intlo neeru", "neeru vastondi", "water enter avutundi",
             "sadak pani mein doob"),
+    _phrase("flood + rising water (script)",
+            "घर में पानी आ रहा है", "पानी तेज़ बढ़ रहा है", "सड़क पानी में डूब गई",
+            "ఇంట్లో నీరు వస్తోంది", "వరద నీరు ఇంట్లోకి వస్తోంది"),
     _phrase("flood + rising water",
             "flood water", "floodwater", "flooding", "flash flood",
             "water entering", "water entering my house", "water entering the house",
@@ -112,7 +124,7 @@ _TIER1_RULES["flooding"] = [
             "street is underwater", "street is flooded", "road is flooded", "roads flooded",
             "trapped in water", "trapped by floodwater", "submerged", "inundated",
             "heavy flooding", "severe flooding", "waterlogged street", "waterlogged",
-            "house is flooding", "drain overflowing"),
+            "house is flooding", "drain overflowing", "water logged", "street water logged"),
     # Extra guard: require "water" with "level" or "rising/entered" rather than
     # bare "water" — prevents "water bottle" from matching.
     _phrase("water level",
@@ -122,7 +134,11 @@ _TIER1_RULES["flooding"] = [
 _TIER1_RULES["electrocution"] = [
     _phrase("electric shock (multilingual)",
             "bijli ka jhatka", "current lag gaya", "current shock ayindi",
-            "live wire padipoyindi"),
+            "live wire padipoyindi", "bijli ki taar", "taar gir gayi",
+            "transformer se spark"),
+    _phrase("electric shock (script)",
+            "बिजली का झटका लगा", "लाइव वायर गिर गई",
+            "విద్యుత్ షాక్ అయింది", "లైవ్ వైర్ పడిపోయింది"),
     _phrase("electric shock",
             "electric shock", "electrocuted", "electrocution",
             "live wire", "live wire down", "exposed wire", "live electrical wire",
@@ -139,7 +155,10 @@ _TIER1_RULES["electrocution"] = [
 _TIER1_RULES["injury"] = [
     _phrase("injury (multilingual)",
             "bahut bleeding", "haddi toot gayi", "khoon bah raha hai",
-            "chala bleeding avutundi", "bone break ayyindi"),
+            "chala bleeding avutundi", "bone break ayyindi",
+            "sar par chot", "wo unconscious hai"),
+    _phrase("injury (script)",
+            "खून बह रहा है", "हड्डी टूट गई", "తలకు గాయం అయింది", "ఎక్కువ రక్తం వస్తోంది"),
     _phrase("injury + bleeding",
             "deep cut", "severe cut", "serious cut",
             "bleeding badly", "bleeding heavily", "heavy bleeding", "severe bleeding",
@@ -154,12 +173,27 @@ _TIER1_RULES["injury"] = [
     _phrase("injury (general)",
             "injured and bleeding", "injured badly", "badly hurt",
             "critical injury", "severe injury"),
+    _phrase("fall / mobility",
+            "i fell", "i have fallen", "slipped and fell", "fell down", "fell off",
+            "i slipped", "slipped", "slipped on",
+            "unable to walk", "cannot walk", "can't walk", "cannot stand",
+            "can't stand", "cannot get up", "can't get up",
+            "twisted ankle", "twisted my", "sprained", "got sprained", "sprained my",
+            "hurt my leg", "hurt my back", "hurt my knee", "hurt my ankle",
+            "knee hurts", "ankle hurts", "leg hurts", "back hurts",
+            "my knee", "pain in my knee", "pain in my leg",
+            "leg is broken"),
+    _phrase("fall / mobility (multilingual)",
+            "gir gaya", "main gir gayi", "chal nahi pa raha", "chal nahi paa raha",
+            "nadavaledu", "padipoyanu"),
 ]
 
 _TIER1_RULES["snakebite"] = [
     _phrase("snake bite (multilingual)",
             "saanp ne kaat", "paamu kadithindi", "snake bite ho gaya",
-            "snake bite ayyindi"),
+            "snake bite ayyindi", "antivenom chahiye", "zeherila saanp"),
+    _phrase("snake bite (script)",
+            "सांप ने काट लिया", "పాము కుట్టింది"),
     _phrase("snake bite",
             "snake bite", "snakebite", "bitten by a snake",
             "bitten by snake", "snake bit", "snake has bitten",
@@ -171,7 +205,9 @@ _TIER1_RULES["snakebite"] = [
 _TIER1_RULES["cyclone"] = [
     _phrase("cyclone (multilingual)",
             "tufan aa raha hai", "tez hawa chal rahi hai", "gali tez ga vistundi",
-            "cyclone warning vachindi"),
+            "cyclone warning vachindi", "chat ukhad gayi"),
+    _phrase("cyclone (script)",
+            "तूफान आ रहा है", "తుఫాను వస్తోంది"),
     _phrase("cyclone",
             "cyclone", "cyclonic storm", "severe cyclone",
             "hurricane", "super cyclone", "tropical cyclone",
@@ -184,7 +220,10 @@ _TIER1_RULES["cyclone"] = [
 
 _TIER1_RULES["structural_damage"] = [
     _phrase("structural damage (multilingual)",
-            "building gir gayi", "building collapse ayyindi", "chhat gir gayi"),
+            "building gir gayi", "building collapse ayyindi", "chhat gir gayi",
+            "diwar gir gayi", "debris ke neeche"),
+    _phrase("structural damage (script)",
+            "इमारत गिर गई", "భవనం కుప్పకూలింది", "పైకప్పు కుప్పకూలింది"),
     _phrase("building collapse",
             "building collapse", "building collapsed", "building has collapsed",
             "building have collapsed", "building had collapsed",
@@ -214,7 +253,9 @@ _TIER1_RULES["structural_damage"] = [
 _TIER1_RULES["accident"] = [
     _phrase("car accident (multilingual)",
             "car accident ho gaya", "road accident ayyindi",
-            "road pe accident", "bike accident ho gaya"),
+            "road pe accident", "bike accident ho gaya", "thok diya"),
+    _phrase("car accident (script)",
+            "सड़क पर एक्सीडेंट हुआ", "వాహనం ప్రమాదం అయింది"),
     _phrase("car accident",
             "car accident", "road accident", "vehicle accident",
             "traffic accident", "bike accident",
@@ -385,6 +426,14 @@ _TIER2_EXAMPLES: dict[str, list[str]] = {
         "a person is unconscious and not responding",
         "the victim has severe head injuries",
         "someone is bleeding very heavily from a wound",
+        "i fell after getting off a bus and i am unable to walk",
+        "i slipped and cannot walk",
+        "i fell down and cannot get up",
+        "i hurt my leg and cannot stand",
+        "someone fell on the platform and cannot walk",
+        "i twisted my ankle and cannot walk",
+        "i slipped in the garden and my knee hurts",
+        "i was walking and slipped and my knee hurts",
     ],
     "snakebite": [
         "a snake bit someone",
@@ -533,6 +582,32 @@ def _tier2_classify(norm_text: str) -> TriageResult | None:
         return None
 
 
+def retrieve_similar_examples(text: str, k: int = 3) -> list[dict]:
+    """Return nearest canonical examples. Labels are retrieval hits, not decisions."""
+    norm_text = _normalize(text)
+    if not norm_text or not _ensure_tier2() or _tier2_vectorizer is None or _tier2_matrix is None:
+        return []
+    try:
+        from sklearn.metrics.pairwise import cosine_similarity
+
+        vec = _tier2_vectorizer.transform([norm_text])
+        sims = cosine_similarity(vec, _tier2_matrix)[0]
+        ranked = sims.argsort()[::-1][:k]
+        hits = []
+        for idx in ranked:
+            hits.append(
+                {
+                    "example": _EXAMPLE_TEXTS[idx],
+                    "category": _EXAMPLE_CATEGORIES[idx],
+                    "score": round(float(sims[idx]), 4),
+                }
+            )
+        return hits
+    except Exception as exc:
+        logger.warning("Retrieval: similar-example lookup failed: %s", exc)
+        return []
+
+
 # ─────────────────────────────────────────────────────────────────────────────
 # Step 4I — Tier 3: Groq LLM fallback (classification only)
 # ─────────────────────────────────────────────────────────────────────────────
@@ -552,6 +627,9 @@ The category MUST be one of these exact values (lowercase, no spaces except unde
 flooding, electrocution, injury, snakebite, cyclone, structural_damage, accident, unclassified
 
 Use "unclassified" if the description does not clearly match any of the above categories.
+
+Map trauma, a fall, being unable to walk, or being unable to stand to injury.
+Travel words such as bus, train, or RTC do not make the case unclassified.
 
 IMPORTANT RULES:
 - Do NOT determine severity, risk level, or emergency seriousness.
@@ -727,3 +805,63 @@ async def classify(description: str, *, skip_llm: bool = False) -> TriageResult:
     except Exception as exc:
         logger.warning("Tier3: Unexpected error: %s. Returning unclassified.", exc)
         return _unclassified_default
+
+
+def _prefer_triage_result(results: list[TriageResult]) -> TriageResult:
+    classified = [item for item in results if item.category != "unclassified"]
+    pool = classified or results
+    return min(pool, key=lambda item: (item.tier, -item.confidence))
+
+
+async def classify_free_text(
+    description: str,
+    *,
+    skip_llm: bool = False,
+) -> tuple[TriageResult, dict]:
+    """Understand (optional LLM restatement) → retrieve similar examples → classify.
+
+    The LLM must not set category or severity. Historical original text wins.
+    """
+    meta: dict = {
+        "understood_as": None,
+        "nlu_source": "passthrough",
+        "retrieved": [],
+        "texts_classified": [],
+    }
+    original = await classify(description, skip_llm=skip_llm)
+    meta["texts_classified"].append("original")
+
+    norm_original = _normalize(description[:2000] if description else "")
+    if _is_likely_historical(norm_original) and not _is_present_danger(norm_original):
+        meta["retrieved"] = retrieve_similar_examples(description)
+        return original, meta
+
+    texts = [description]
+    if not skip_llm:
+        try:
+            from app.services.nlu_service import understand_utterance
+
+            understood = await understand_utterance(description)
+            canonical = (understood.get("canonical") or "").strip()
+            if canonical and _normalize(canonical) != norm_original:
+                texts.append(canonical[:2000])
+                meta["understood_as"] = canonical[:500]
+                meta["nlu_source"] = understood.get("source") or "llm_restatement"
+        except Exception as exc:
+            logger.warning("NLU restatement skipped: %s", exc)
+
+    meta["retrieved"] = retrieve_similar_examples(texts[-1])
+
+    results = [original]
+    for extra in texts[1:]:
+        extra_result = await classify(extra, skip_llm=skip_llm)
+        results.append(extra_result)
+        meta["texts_classified"].append("canonical")
+
+    chosen = _prefer_triage_result(results)
+    if meta["understood_as"] and chosen.category != "unclassified":
+        chosen.explanation = (
+            f"{chosen.explanation} Classified after restating the user's words; "
+            "category still comes from rules/examples/models, not the LLM."
+        )
+    return chosen, meta

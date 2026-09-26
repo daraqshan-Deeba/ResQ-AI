@@ -18,6 +18,7 @@ from app.blueprints import (
 )
 from app.core.config import settings
 # Importing this triggers firebase_admin.initialize_app(...) once, at startup.
+from app.i18n.languages import language_catalog
 from app.services import firebase_service, supabase_service  # noqa: F401
 
 
@@ -55,6 +56,10 @@ def create_app() -> Flask:
                 "firebase_available": firebase_service.firebase_available,
             }
         )
+
+    @app.get("/api/languages")
+    def languages():
+        return jsonify(language_catalog())
 
     return app
 

@@ -14,6 +14,7 @@ SQL_FILES = (
     Path(__file__).resolve().parents[1] / "supabase" / "schema_vectors.sql",
     Path(__file__).resolve().parents[1] / "supabase" / "schema_auth.sql",
     Path(__file__).resolve().parents[1] / "supabase" / "schema_auth_phones.sql",
+    Path(__file__).resolve().parents[1] / "supabase" / "schema_auth_emergency_relation.sql",
     Path(__file__).resolve().parents[1] / "supabase" / "schema_relationships.sql",
     Path(__file__).resolve().parents[1] / "supabase" / "schema_community_report_coords.sql",
 )

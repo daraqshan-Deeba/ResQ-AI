@@ -1,6 +1,6 @@
 import re
 from typing import Annotated, Generic, Literal, Optional, TypeVar
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 T = TypeVar("T")
 
@@ -113,6 +113,7 @@ class ActionPlanContext(BaseModel):
 
     user_description: str
     triage_category: EmergencyCategory
+    reply_language: str = "English"
     weather_risk: Optional[dict] = None
     location_context: Optional[dict] = None
     available_services: Optional[dict] = None
@@ -194,6 +195,9 @@ class ChatRequest(BaseModel):
     actor_id: str | None = Field(
         None, description="Stable user/device id for session attribution"
     )
+    language: str | None = Field(
+        None, description="Reply language, e.g. English / Hindi / Telugu"
+    )
 
 
 class ChatResponse(BaseModel):
@@ -225,6 +229,7 @@ class HospitalOut(BaseModel):
     distance_km: float | None = None
     address: str | None = None
     facility_type: str | None = None
+    phone: str | None = None
     source: str = "supabase"
 
 
@@ -299,10 +304,16 @@ SosNotificationStatus = Literal[
 
 
 class SosRequest(BaseModel):
-    lat: float = Field(..., ge=-90, le=90)
-    lon: float = Field(..., ge=-180, le=180)
+    lat: float | None = Field(None, ge=-90, le=90)
+    lon: float | None = Field(None, ge=-180, le=180)
     situation: str | None = None
     idempotency_key: str | None = None
+
+    @model_validator(mode="after")
+    def coords_together(self):
+        if (self.lat is None) ^ (self.lon is None):
+            raise ValueError("lat and lon must be sent together")
+        return self
 
 
 class SosEventRecord(BaseModel):
@@ -328,6 +339,7 @@ class SosResponse(BaseModel):
     maps_link: str
     message: str
     emergency_contact_phone: Optional[str] = None
+    sms_status: Literal["sent", "failed", "skipped"] = "skipped"
 
 
 # ---------- Community context (Section 9.2 — orchestrator integration) ----------
@@ -368,6 +380,9 @@ class AssessmentResult(BaseModel):
     source_labels: dict[str, str] = Field(default_factory=dict)
     safety_hits: list[str] = Field(default_factory=list)
     protocol_key: str = "unclassified"
+    understood_as: Optional[str] = None
+    retrieved_examples: list[dict] = Field(default_factory=list)
+    citations: list[dict] = Field(default_factory=list)
 
     # Backward-Compatible Legacy Fields
     emergency_level: str = "Moderate"

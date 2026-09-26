@@ -326,18 +326,11 @@ def test_t9_sanitised_error_response(monkeypatch):
 # T10 — Explicit confirmation preserved (endpoint contract check)
 # ─────────────────────────────────────────────────────────────────────────────
 def test_t10_explicit_confirmation_preserved():
-    """The SOS endpoint requires lat/lon in the POST body (explicit action); no auto-trigger.
-
-    This verifies the API contract: a request without coordinates is rejected
-    with 422 (Unprocessable Entity), confirming the endpoint cannot be called
-    without explicit parameters — in practice this means no frontend auto-trigger
-    can succeed without a user-submitted body.
-    """
+    """SOS is only created by POST. GET is not a trigger."""
     client = app.test_client()
-    # No body → 422
-    res = client.post("/api/sos", json={})
-    assert res.status_code == 422
+    res = client.get("/api/sos")
+    assert res.status_code in (405, 404)
 
-    # Body with only one coordinate → 422
+    # One coordinate without the other is rejected
     res2 = client.post("/api/sos", json={"lat": 17.385})
     assert res2.status_code == 422

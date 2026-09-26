@@ -1,0 +1,1 @@
+"""App language catalog."""

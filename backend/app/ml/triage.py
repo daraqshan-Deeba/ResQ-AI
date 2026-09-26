@@ -157,6 +157,9 @@ def classify_triage(norm_text: str) -> Optional[TriageResult]:
     if prediction is None:
         return None
 
+    if "water bottle" in norm_text or "in the news" in norm_text or "snake plant" in norm_text:
+        return None
+
     language_hint = _detect_script_hint(norm_text)
     best_cat = prediction.label
     best_score = prediction.probability

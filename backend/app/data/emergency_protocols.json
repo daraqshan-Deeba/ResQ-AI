@@ -74,6 +74,29 @@
       ],
       "explanation": "Deterministic trauma first-aid protocol emphasizing hemorrhage control, spinal immobilization, and urgent medical escalation."
     },
+    "injury_mobility": {
+      "immediate_actions": [
+        "Sit or lie down and stop putting weight on the injured joint if it hurts to stand or walk.",
+        "Support the knee or ankle in a comfortable position; use clothing or a cushion if available.",
+        "Apply a cold pack wrapped in cloth for 10–15 minutes if you have one; do not put ice directly on skin.",
+        "Call 108 (Ambulance) if you cannot bear weight, the joint looks deformed, or pain is severe and worsening."
+      ],
+      "safety_warnings": [
+        "Do not keep walking on a knee or ankle that cannot take your weight.",
+        "Do not try to snap a joint back into place or massage a possible fracture.",
+        "Do not ignore numbness, a cold foot, or rapidly increasing swelling."
+      ],
+      "when_to_seek_help": [
+        "You cannot put weight on the leg or the joint looks misshapen.",
+        "Pain, swelling, or bruising is getting worse, or you feel faint.",
+        "You heard a pop, or the injury followed a fall from height or a vehicle crash."
+      ],
+      "questions_to_ask_user": [
+        "Can you put any weight on the injured leg?",
+        "Is the knee or ankle swelling, numb, or looking out of shape?"
+      ],
+      "explanation": "You slipped and hurt a joint. Rest it, avoid walking on it if it will not take your weight, and call 108 if you cannot stand or the pain is severe."
+    },
     "snakebite": {
       "immediate_actions": [
         "Keep the person completely still and calm to slow the spread of venom.",

@@ -26,6 +26,7 @@ export async function apiCall<T>(
     const extra = await authHeaders();
     const res = await fetch(`${API_BASE}${path}`, {
       ...options,
+      signal: options.signal ?? AbortSignal.timeout(30_000),
       headers: {
         "Content-Type": "application/json",
         ...extra,
@@ -65,6 +66,7 @@ export async function apiUpload<T>(
       method: "POST",
       body: formData,
       headers: extra,
+      signal: AbortSignal.timeout(60_000),
     });
 
     if (!res.ok) {

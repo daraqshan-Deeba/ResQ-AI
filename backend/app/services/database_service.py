@@ -85,6 +85,12 @@ def register_device(token: str, *, user_id: str | None = None) -> None:
         firebase_service.register_device(token, user_id=user_id)
 
 
+def get_emergency_contact(user_id: str | None) -> dict[str, str | None]:
+    if supabase_service.supabase_available:
+        return supabase_service.get_emergency_contact(user_id)
+    return {"name": None, "phone": None, "relation": None, "user_name": None}
+
+
 def list_device_tokens(*, user_id: str | None = None) -> list[str]:
     tokens: list[str] = []
     if supabase_service.supabase_available:

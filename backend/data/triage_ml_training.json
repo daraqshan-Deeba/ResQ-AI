@@ -43,6 +43,12 @@
     {"text": "athadu unconscious ga unnadu", "category": "injury", "language": "te"},
     {"text": "తలకు గాయం అయింది", "category": "injury", "language": "te"},
     {"text": "ఎక్కువ రక్తం వస్తోంది", "category": "injury", "language": "te"},
+    {"text": "i slipped on the stairs and cannot stand", "category": "injury", "language": "en"},
+    {"text": "my ankle is twisted and i cannot walk to the clinic", "category": "injury", "language": "en"},
+    {"text": "i fell on the platform and hurt my leg", "category": "injury", "language": "en"},
+    {"text": "gir gaya hoon chal nahi pa raha", "category": "injury", "language": "hi"},
+    {"text": "main gir gaya taang mein dard hai", "category": "injury", "language": "hi"},
+    {"text": "padipoyanu nadavaledu", "category": "injury", "language": "te"},
 
     {"text": "saanp ne kaat liya", "category": "snakebite", "language": "hi"},
     {"text": "snake bite ho gaya", "category": "snakebite", "language": "hi"},

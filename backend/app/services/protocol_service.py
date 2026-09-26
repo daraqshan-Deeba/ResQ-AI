@@ -29,7 +29,14 @@ def get_protocol_plan(key: str, trusted_contacts: list[str] | None = None) -> Ac
     return ActionPlan.model_validate(payload)
 
 
-def protocol_key_for(category: EmergencyCategory | str, safety_protocol_key: str | None) -> str:
+def protocol_key_for(
+    category: EmergencyCategory | str,
+    safety_protocol_key: str | None,
+    matched_rule: str | None = None,
+) -> str:
     if safety_protocol_key:
         return safety_protocol_key
+    rule = (matched_rule or "").lower()
+    if str(category) == "injury" and "fall / mobility" in rule:
+        return "injury_mobility"
     return str(category or "unclassified")

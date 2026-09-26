@@ -13,6 +13,7 @@ from app.models.schemas import (
     ActionPlanSource,
     EmergencyCategory,
 )
+from app.i18n.languages import groq_language_phrase, is_english_reply
 from app.services.groq_service import call_groq_safe
 from app.services.protocol_service import default_contacts, get_protocol_plan, protocol_key_for
 
@@ -38,24 +39,81 @@ def get_fallback_action_plan(
     return get_protocol_plan(key, trusted_contacts or DEFAULT_TRUSTED_CONTACTS)
 
 
-SYSTEM_PROMPT = """You are ResQ AI's question assistant.
+SYSTEM_PROMPT = """You write the user-facing words for ResQ AI after models have already classified the case.
 Return ONLY JSON:
 {{
-  "questions_to_ask_user": ["<short question>", "..."]
+  "headline": "<summary of THIS user's situation, max 180 characters, MUST be in the reply language>",
+  "questions_to_ask_user": ["<short question in the reply language>", "..."],
+  "selected_actions": ["<exact English copy from PROTOCOL immediate_actions>", "..."],
+  "selected_warnings": ["<exact English copy from PROTOCOL safety_warnings>", "..."],
+  "translated_actions": ["<same order as selected_actions, translated into the reply language>"],
+  "translated_warnings": ["<same order as selected_warnings, translated into the reply language>"],
+  "translated_seek_help": ["<each PROTOCOL when_to_seek_help line, same order, translated>"]
 }}
+Reply language: {language}
 Rules:
-- Do NOT give first-aid steps, phone numbers, URLs, or hospital names.
-- At most 3 questions. Each under 200 characters.
-- Questions must change the next action if answered.
+- Category, tier, and severity are already decided. Do not change them.
+- selected_actions and selected_warnings MUST be exact English copies from PROTOCOL. Do not invent procedures.
+- Pick the protocol lines that fit this description (for example a slip and sore knee is not a spinal trauma speech).
+- headline and questions MUST be in the reply language. If the reply language is not English, do not write them in English.
+- translated_* must keep the same meaning and keep numbers 112, 108, 1070 unchanged.
+- Do NOT include SOS commands, URLs, hospital names, or phone numbers other than 112/108/1070 if they already appear in PROTOCOL.
+- At most 3 questions, each under 200 characters.
 """
 
 
-def _build_user_prompt(context: ActionPlanContext) -> str:
+def _build_user_prompt(context: ActionPlanContext, protocol: ActionPlan, protocol_key: str) -> str:
     return (
-        f"Triage category: {context.triage_category}\n"
         f"User description: {context.user_description}\n"
-        "Suggest clarifying questions only."
+        f"Authoritative category: {context.triage_category}\n"
+        f"Protocol key: {protocol_key}\n"
+        f"Language: {groq_language_phrase(context.reply_language)}\n"
+        "PROTOCOL immediate_actions:\n"
+        + "\n".join(f"- {step}" for step in protocol.immediate_actions)
+        + "\nPROTOCOL safety_warnings:\n"
+        + "\n".join(f"- {step}" for step in protocol.safety_warnings)
+        + "\nPROTOCOL when_to_seek_help:\n"
+        + "\n".join(f"- {step}" for step in protocol.when_to_seek_help)
+        + f"\nWrite the headline and questions in {groq_language_phrase(context.reply_language)}."
+        + " Then select exact English protocol lines and translate those lines."
     )
+
+
+def _norm_step(text: str) -> str:
+    return re.sub(r"\s+", " ", (text or "").strip().lower())
+
+
+def _select_protocol_lines(selected: object, allowed: list[str]) -> list[str]:
+    if not isinstance(selected, list) or not allowed:
+        return []
+    index = {_norm_step(item): item for item in allowed}
+    picked: list[str] = []
+    seen: set[str] = set()
+    for raw in selected:
+        if not isinstance(raw, str):
+            continue
+        key = _norm_step(raw)
+        match = index.get(key)
+        if match and match not in seen:
+            picked.append(match)
+            seen.add(match)
+    return picked
+
+
+def _apply_aligned_translations(source: list[str], translated: object) -> list[str]:
+    if not source or not isinstance(translated, list) or len(translated) != len(source):
+        return source
+    out: list[str] = []
+    for original, raw in zip(source, translated):
+        if not isinstance(raw, str):
+            return source
+        text = raw.strip()
+        if not text or not _text_is_safe(text):
+            return source
+        out.append(text[:500])
+        _ = original
+    return out
+
 
 
 def _text_is_safe(text: str) -> bool:
@@ -132,8 +190,13 @@ async def generate_action_plan_with_provenance(
         return protocol, "deterministic", "not_needed"
 
     messages = [
-        {"role": "system", "content": SYSTEM_PROMPT},
-        {"role": "user", "content": _build_user_prompt(context)},
+        {
+            "role": "system",
+            "content": SYSTEM_PROMPT.format(
+                language=groq_language_phrase(context.reply_language or "English")
+            ),
+        },
+        {"role": "user", "content": _build_user_prompt(context, protocol, key)},
     ]
 
     try:
@@ -169,6 +232,30 @@ async def generate_action_plan_with_provenance(
             ][:3]
             if clean:
                 protocol.questions_to_ask_user = clean
+        if isinstance(payload, dict):
+            headline = payload.get("headline") or payload.get("whats_happening")
+            if isinstance(headline, str) and headline.strip() and _text_is_safe(headline):
+                protocol.explanation = headline.strip()[:300]
+            actions = _select_protocol_lines(
+                payload.get("selected_actions"), protocol.immediate_actions
+            )
+            if len(actions) >= 2:
+                protocol.immediate_actions = actions
+            warnings = _select_protocol_lines(
+                payload.get("selected_warnings"), protocol.safety_warnings
+            )
+            if len(warnings) >= 1:
+                protocol.safety_warnings = warnings
+            if not is_english_reply(context.reply_language):
+                protocol.immediate_actions = _apply_aligned_translations(
+                    protocol.immediate_actions, payload.get("translated_actions")
+                )
+                protocol.safety_warnings = _apply_aligned_translations(
+                    protocol.safety_warnings, payload.get("translated_warnings")
+                )
+                protocol.when_to_seek_help = _apply_aligned_translations(
+                    protocol.when_to_seek_help, payload.get("translated_seek_help")
+                )
     except Exception as exc:
         logger.warning("Ignoring LLM enrichment (%s).", exc)
 

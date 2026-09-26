@@ -13,4 +13,8 @@ def parse_json(model: type[T], payload: Any) -> T:
 
 
 def validation_error_response(exc: ValidationError):
-    return jsonify({"detail": exc.errors()}), 422
+    safe = [
+        {"loc": list(err.get("loc", ())), "msg": err.get("msg"), "type": err.get("type")}
+        for err in exc.errors()
+    ]
+    return jsonify({"detail": safe}), 422

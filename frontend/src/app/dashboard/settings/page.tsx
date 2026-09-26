@@ -1,37 +1,42 @@
 "use client";
 
 import { useState } from "react";
+import { RegistrationForm } from "@/components/RegistrationForm";
 import { apiCall } from "@/lib/api";
 import { isFirebaseWebConfigured, requestFcmToken } from "@/lib/firebase";
+import { LanguageSelect } from "@/components/LanguageSelect";
+import { useAppLanguage } from "@/components/AppLanguageProvider";
 
 export default function SettingsPage() {
+  const { language, setLanguage, t } = useAppLanguage();
   const [status, setStatus] = useState("");
 
   async function enableAlerts() {
+    if (!isFirebaseWebConfigured()) {
+      setStatus(t("settings.alertsPartial"));
+      return;
+    }
+
     if (!("Notification" in window)) {
-      setStatus("This browser does not support alerts.");
+      setStatus(t("settings.alertsUnsupported"));
       return;
     }
 
     const permission = await Notification.requestPermission();
     if (permission !== "granted") {
-      setStatus(
-        "Notifications were not allowed. You can turn them on later in your browser settings.",
-      );
+      setStatus(t("settings.alertsDenied"));
       return;
     }
 
     if (!isFirebaseWebConfigured()) {
-      setStatus(
-        "Permission was granted, but alerts are not fully set up on this device yet. Please try again later.",
-      );
+      setStatus(t("settings.alertsPartial"));
       return;
     }
 
     try {
       const token = await requestFcmToken();
       if (!token) {
-        setStatus("Could not finish setting up alerts. Please try again.");
+        setStatus(t("settings.alertsRetry"));
         return;
       }
 
@@ -40,33 +45,41 @@ export default function SettingsPage() {
         body: JSON.stringify({ token }),
       });
 
-      setStatus(
-        res.ok
-          ? "Alerts are on. This device can receive SOS and emergency updates."
-          : "Could not save your alert settings. Please try again in a moment.",
-      );
+      setStatus(res.ok ? t("settings.alertsOk") : t("settings.alertsFail"));
     } catch {
-      setStatus("Something went wrong while enabling alerts. Please try again.");
+      setStatus(t("settings.alertsError"));
     }
   }
 
   return (
-    <div className="mx-auto max-w-md text-center">
-      <div className="glass-card p-8">
-        <div className="text-4xl">⚙️</div>
-        <h1 className="mt-4 text-2xl font-semibold">Settings</h1>
-        <p className="mt-3 text-sm text-slate-400">
-          Turn on alerts to get SOS and emergency updates on this device, even
-          when the app is in the background.
-        </p>
-        <button className="btn btn-primary mt-6" onClick={enableAlerts}>
-          🔔 Turn on alerts
+    <div className="max-w-md space-y-4 md:pb-4">
+      <div>
+        <h1 className="text-2xl font-semibold">{t("settings.title")}</h1>
+        <p className="mt-1 text-sm text-slate-400">{t("settings.intro")}</p>
+      </div>
+
+      <div className="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-4">
+        <p className="mb-2 text-sm font-medium text-slate-200">{t("language.label")}</p>
+        <p className="mb-2 text-xs text-slate-400">{t("language.help")}</p>
+        <LanguageSelect
+          value={language}
+          onChange={setLanguage}
+          className="w-full rounded-xl border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-sm text-slate-200"
+        />
+      </div>
+
+      <div className="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-4">
+        <p className="mb-3 text-sm font-medium text-slate-200">{t("settings.review")}</p>
+        <RegistrationForm redirectTo={null} submitLabel={t("settings.save")} />
+      </div>
+
+      <div className="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-4">
+        <p className="text-sm font-medium text-slate-200">{t("settings.alertsTitle")}</p>
+        <p className="mt-1 text-xs leading-relaxed text-slate-400">{t("settings.alertsBody")}</p>
+        <button type="button" className="btn btn-primary mt-3 w-full" onClick={enableAlerts}>
+          {t("settings.alertsButton")}
         </button>
-        {status && <p className="mt-4 text-sm text-slate-300">{status}</p>}
-        <p className="mt-6 text-xs text-slate-500">
-          You can change notification permission anytime in your browser or
-          device settings.
-        </p>
+        {status && <p className="mt-3 text-sm text-slate-300">{status}</p>}
       </div>
     </div>
   );

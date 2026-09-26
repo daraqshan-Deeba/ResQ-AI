@@ -15,6 +15,7 @@ create table if not exists public.profiles (
     emergency_contact_phone text,
     emergency_contact_country_dial text default '+91',
     emergency_contact_national text,
+    emergency_contact_relation text,
     registration_complete boolean not null default false,
     created_at timestamptz not null default now(),
     updated_at timestamptz not null default now()

@@ -8,20 +8,14 @@ from typing import Optional
 import httpx
 
 from app.core.config import settings
+from app.i18n.languages import language_map, whisper_code
 from app.models.schemas import ServiceResult, TranscriptionResult
 
 logger = logging.getLogger("resq.transcription")
 
 GROQ_TRANSCRIPTIONS_URL = "https://api.groq.com/openai/v1/audio/transcriptions"
 
-LANGUAGE_MAP = {
-    "english": "en",
-    "telugu": "te",
-    "hindi": "hi",
-    "en": "en",
-    "te": "te",
-    "hi": "hi",
-}
+LANGUAGE_MAP = language_map()
 
 MAX_AUDIO_BYTES = 25 * 1024 * 1024  # Groq limit for whisper-large-v3
 
@@ -29,7 +23,7 @@ MAX_AUDIO_BYTES = 25 * 1024 * 1024  # Groq limit for whisper-large-v3
 def resolve_language_code(language: Optional[str]) -> Optional[str]:
     if not language:
         return None
-    return LANGUAGE_MAP.get(language.strip().lower())
+    return whisper_code(language) or LANGUAGE_MAP.get(language.strip().lower())
 
 
 async def transcribe_audio_safe(

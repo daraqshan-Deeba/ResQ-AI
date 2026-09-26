@@ -2,15 +2,17 @@
 
 import { FormEvent, useCallback, useRef, useState } from "react";
 import { AssessmentResultPanel } from "@/components/AssessmentResultPanel";
+import { LanguageSelect } from "@/components/LanguageSelect";
 import { SosConfirmModal } from "@/components/SosConfirmModal";
 import { useUserLocation } from "@/hooks/useUserLocation";
 import { useVoiceInput } from "@/hooks/useVoiceInput";
 import { apiCall } from "@/lib/api";
+import { useAppLanguage } from "@/components/AppLanguageProvider";
 import type { AssessmentResult } from "@/lib/types";
 
 export default function AssessmentPage() {
+  const { language, setLanguage, t } = useAppLanguage();
   const [text, setText] = useState("");
-  const [language, setLanguage] = useState("English");
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<AssessmentResult | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -52,16 +54,9 @@ export default function AssessmentPage() {
     [coords, language],
   );
 
-  const onTranscript = useCallback(
-    (transcript: string) => {
-      setText((prev) => {
-        const next = prev.trim() ? `${prev.trim()} ${transcript}` : transcript;
-        void runAssessment(next);
-        return next;
-      });
-    },
-    [runAssessment],
-  );
+  const onTranscript = useCallback((transcript: string) => {
+    setText((prev) => (prev.trim() ? `${prev.trim()} ${transcript}` : transcript));
+  }, []);
 
   const voice = useVoiceInput(onTranscript, language);
 
@@ -80,18 +75,18 @@ export default function AssessmentPage() {
           : "Location will be used for hospitals and weather when the situation needs it.";
 
   return (
-    <div className="mx-auto max-w-3xl">
-      <div className="rounded-3xl border border-red-500/20 bg-gradient-to-br from-red-500/10 via-transparent to-transparent p-6 sm:p-8">
-        <p className="mono-tag text-red-200/80">Need help now</p>
-        <h1 className="mt-2 text-3xl font-semibold text-white">Get help</h1>
-        <p className="mt-3 max-w-2xl text-sm leading-relaxed text-slate-300">
-          Say or type what is happening. The backend classifies the situation,
-          fetches only the evidence that matters, and returns standard steps.
-          For a life-threatening emergency, call 112 first.
-        </p>
+    <div className="max-w-none">
+      <div className="rounded-2xl border border-red-500/20 bg-gradient-to-br from-red-500/10 via-transparent to-transparent p-3 sm:p-4">
+        <p className="mono-tag text-red-200/80">{t("help.tag")}</p>
+        <h1 className="mt-1 text-xl font-semibold text-white sm:text-2xl">{t("help.title")}</h1>
+        {!result && (
+          <p className="mt-2 max-w-2xl text-sm leading-relaxed text-slate-300">
+            {t("help.intro")}
+          </p>
+        )}
       </div>
 
-      <form className="mt-8" onSubmit={onSubmit}>
+      <form className="mt-3" onSubmit={onSubmit}>
         <div className="relative">
           <textarea
             value={text}
@@ -102,8 +97,10 @@ export default function AssessmentPage() {
                 void runAssessment(text);
               }
             }}
-            placeholder="What is happening? Speak or type, then go."
-            className="min-h-[160px] w-full rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-4 pr-16 text-sm text-white outline-none ring-0 transition focus:border-cyan-500/40"
+            placeholder={t("help.placeholder")}
+            className={`w-full rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-3 pr-16 text-sm text-white outline-none ring-0 transition focus:border-cyan-500/40 ${
+              result ? "min-h-[72px]" : "min-h-[120px]"
+            }`}
             disabled={loading}
           />
           {voice.supported && (
@@ -126,39 +123,40 @@ export default function AssessmentPage() {
         </div>
 
         <div className="mt-2 flex flex-wrap items-center gap-3 text-xs text-slate-500">
-          {voice.listening && <span className="text-red-300">Recording. Tap again to stop — we will assess automatically.</span>}
+          {voice.listening && <span className="text-red-300">Recording. Tap again to stop, then review the text and press Get help.</span>}
           {voice.transcribing && <span className="text-cyan-300">Converting speech to text...</span>}
           {voice.error && <span className="text-amber-300">{voice.error}</span>}
           {loading && <span className="text-cyan-200">Working on your situation...</span>}
-          {!voice.listening && !voice.transcribing && !loading && (
-            <span>Tap the microphone to speak, or press Enter to send.</span>
+          {!result && !voice.listening && !voice.transcribing && !loading && (
+            <span>{t("help.mic")}</span>
           )}
         </div>
 
-        <div className="mt-5 flex flex-wrap items-center gap-4">
-          <select
-            value={language}
-            onChange={(e) => setLanguage(e.target.value)}
-            className="rounded-xl border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-sm"
+        <div className="mt-3 flex flex-wrap items-center gap-3">
+          <button
+            type="submit"
+            className="btn btn-primary w-full sm:w-auto"
+            disabled={loading || !text.trim()}
           >
-            <option>English</option>
-            <option>Telugu</option>
-            <option>Hindi</option>
-          </select>
-          <p className="max-w-md text-xs text-slate-500">{locationHint}</p>
+            {loading ? t("help.working") : t("help.submit")}
+          </button>
+          <label className="text-xs text-slate-500">
+            {t("language.label")}
+            <span className="ml-2 inline-block">
+              <LanguageSelect value={language} onChange={setLanguage} />
+            </span>
+          </label>
+          {!result && (
+            <p className="max-w-md text-xs text-slate-500">
+              {t("help.protocolNote")}
+              {locationHint ? ` ${locationHint}` : ""}
+            </p>
+          )}
         </div>
-
-        <button
-          type="submit"
-          className="btn btn-primary mt-6 w-full sm:w-auto"
-          disabled={loading || !text.trim()}
-        >
-          {loading ? "Working..." : "Get help"}
-        </button>
       </form>
 
       {(error || result) && (
-        <div className="mt-10 space-y-6">
+        <div className="mt-4">
           {error && (
             <div className="rounded-2xl border border-red-500/30 bg-red-500/10 p-4 text-sm text-red-100">
               {error}. Call 112 if this is urgent.
@@ -168,6 +166,9 @@ export default function AssessmentPage() {
             <AssessmentResultPanel
               result={result}
               onRequestSos={() => setSosOpen(true)}
+              onAskQuestion={(question) => {
+                setText((prev) => `${prev.trim()}\n${question}`);
+              }}
             />
           )}
         </div>

@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { PhoneInput } from "@/components/PhoneInput";
 import { createClient } from "@/lib/supabase/client";
+import { useAppLanguage } from "@/components/AppLanguageProvider";
 import {
   buildE164,
   DEFAULT_PHONE_DIAL,
@@ -11,12 +12,45 @@ import {
   validatePhone,
 } from "@/lib/phone";
 import type { UserProfile } from "@/lib/types";
+import type { UiCopyKey } from "@/lib/ui-copy";
 
-export function RegistrationForm() {
+const RELATION_PRESETS = [
+  "son",
+  "daughter",
+  "spouse",
+  "father",
+  "mother",
+  "brother",
+  "sister",
+  "friend",
+  "caregiver",
+] as const;
+
+function splitRelation(value: string | null | undefined): {
+  preset: string;
+  custom: string;
+} {
+  const raw = (value ?? "").trim();
+  if (!raw) return { preset: "", custom: "" };
+  if ((RELATION_PRESETS as readonly string[]).includes(raw)) {
+    return { preset: raw, custom: "" };
+  }
+  return { preset: "other", custom: raw };
+}
+
+export function RegistrationForm({
+  redirectTo = "/dashboard",
+  submitLabel,
+}: {
+  redirectTo?: string | null;
+  submitLabel?: string;
+}) {
   const router = useRouter();
+  const { t } = useAppLanguage();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [saved, setSaved] = useState(false);
   const [profile, setProfile] = useState<UserProfile | null>(null);
 
   const [fullName, setFullName] = useState("");
@@ -29,6 +63,9 @@ export function RegistrationForm() {
   const [emergencyDial, setEmergencyDial] = useState(DEFAULT_PHONE_DIAL);
   const [emergencyNational, setEmergencyNational] = useState("");
   const [emergencyPhoneError, setEmergencyPhoneError] = useState<string | null>(null);
+  const [relationPreset, setRelationPreset] = useState("");
+  const [relationCustom, setRelationCustom] = useState("");
+  const [relationError, setRelationError] = useState<string | null>(null);
 
   useEffect(() => {
     async function load() {
@@ -67,6 +104,7 @@ export function RegistrationForm() {
           emergency_contact_phone: null,
           emergency_contact_country_dial: DEFAULT_PHONE_DIAL,
           emergency_contact_national: null,
+          emergency_contact_relation: null,
           created_at: "",
           updated_at: "",
         };
@@ -92,6 +130,9 @@ export function RegistrationForm() {
       setEmergencyName(row.emergency_contact_name ?? "");
       setEmergencyDial(emergency.dial);
       setEmergencyNational(emergency.national);
+      const relation = splitRelation(row.emergency_contact_relation);
+      setRelationPreset(relation.preset);
+      setRelationCustom(relation.custom);
       setLoading(false);
     }
 
@@ -108,26 +149,40 @@ export function RegistrationForm() {
         ? null
         : validatePhone(emergencyDial, emergencyNational);
 
-    setPhoneError(phoneValidation);
-    setEmergencyPhoneError(emergencyValidation);
-
-    if (!fullName.trim() || !city.trim() || phoneValidation || emergencyValidation) {
-      setError("Please fix the highlighted fields before continuing.");
-      return;
-    }
-
     const phoneE164 = buildE164(phoneDial, phoneNational);
     const emergencyE164 = emergencyNational.trim()
       ? buildE164(emergencyDial, emergencyNational)
       : null;
+    const relationValue =
+      relationPreset === "other"
+        ? relationCustom.trim()
+        : relationPreset.trim();
+
+    setPhoneError(phoneValidation);
+    setEmergencyPhoneError(emergencyValidation);
+    setRelationError(
+      emergencyE164 && !relationValue ? t("settings.relationError") : null,
+    );
+
+    if (
+      !fullName.trim() ||
+      !city.trim() ||
+      phoneValidation ||
+      emergencyValidation ||
+      (emergencyE164 && !relationValue)
+    ) {
+      setError(t("settings.fixFields"));
+      return;
+    }
 
     if (!phoneE164) {
-      setPhoneError("Enter a valid phone number.");
+      setPhoneError(t("settings.phoneInvalid"));
       return;
     }
 
     setSaving(true);
     setError(null);
+    setSaved(false);
     const supabase = createClient();
 
     const { error: updateError } = await supabase
@@ -143,6 +198,7 @@ export function RegistrationForm() {
         emergency_contact_phone: emergencyE164,
         emergency_contact_country_dial: emergencyNational.trim() ? emergencyDial : null,
         emergency_contact_national: emergencyNational.trim() || null,
+        emergency_contact_relation: emergencyE164 ? relationValue : null,
         registration_complete: true,
         updated_at: new Date().toISOString(),
       })
@@ -154,58 +210,117 @@ export function RegistrationForm() {
       return;
     }
 
-    router.replace("/dashboard");
-    router.refresh();
+    if (redirectTo) {
+      router.replace(redirectTo);
+      router.refresh();
+    } else {
+      setSaved(true);
+    }
   }
 
   if (loading) {
-    return <p className="text-sm text-slate-400">Loading your profile...</p>;
+    return <p className="text-sm text-slate-400">{t("settings.loading")}</p>;
   }
 
+  const fieldClass =
+    "mt-1 w-full rounded-xl border border-[var(--border)] bg-[var(--surface)] px-3 py-2";
+
   return (
-    <form onSubmit={submit} className="space-y-4">
-      <p className="text-sm text-slate-400">
-        Please review your details and complete the form to continue.
-      </p>
+    <form onSubmit={submit} className="space-y-3">
+      <div className="rounded-xl border border-amber-400/35 bg-amber-500/[0.07] p-3">
+        <p className="text-sm font-medium text-amber-100">{t("settings.emergencyTag")}</p>
+        <p className="mt-1 text-xs leading-relaxed text-slate-400">
+          {t("settings.emergencyHelp")}
+        </p>
+        <label className="mt-3 block text-sm">
+          <span className="text-slate-300">{t("settings.contactName")}</span>
+          <input
+            value={emergencyName}
+            onChange={(e) => setEmergencyName(e.target.value)}
+            className={fieldClass}
+          />
+        </label>
+        <div className="mt-3">
+          <PhoneInput
+            label={t("settings.contactPhone")}
+            dial={emergencyDial}
+            national={emergencyNational}
+            onDialChange={setEmergencyDial}
+            onNationalChange={setEmergencyNational}
+            error={emergencyPhoneError}
+          />
+        </div>
+        <label className="mt-3 block text-sm">
+          <span className="text-slate-300">{t("settings.relation")}</span>
+          <select
+            value={relationPreset}
+            onChange={(e) => setRelationPreset(e.target.value)}
+            className={fieldClass}
+          >
+            <option value="">{t("settings.relationSelect")}</option>
+            {RELATION_PRESETS.map((value) => (
+              <option key={value} value={value}>
+                {t(`settings.rel.${value}` as UiCopyKey)}
+              </option>
+            ))}
+            <option value="other">{t("settings.relationOther")}</option>
+          </select>
+        </label>
+        {relationPreset === "other" && (
+          <label className="mt-3 block text-sm">
+            <span className="text-slate-300">{t("settings.relationCustom")}</span>
+            <input
+              value={relationCustom}
+              onChange={(e) => setRelationCustom(e.target.value)}
+              placeholder={t("settings.relationHint")}
+              className={fieldClass}
+            />
+          </label>
+        )}
+        {relationError && (
+          <p className="mt-2 text-sm text-[var(--danger-soft)]">{relationError}</p>
+        )}
+      </div>
 
-      {profile?.avatar_url && (
-        <img
-          src={profile.avatar_url}
-          alt="Profile"
-          className="h-16 w-16 rounded-full border border-[var(--border)]"
-        />
-      )}
+      <div className="flex items-center gap-3">
+        {profile?.avatar_url && (
+          <img
+            src={profile.avatar_url}
+            alt=""
+            className="h-12 w-12 shrink-0 rounded-full border border-[var(--border)]"
+          />
+        )}
+        <label className="min-w-0 flex-1 text-sm">
+          <span className="text-slate-400">{t("settings.email")}</span>
+          <input
+            value={profile?.email ?? ""}
+            readOnly
+            className="mt-1 w-full rounded-xl border border-[var(--border)] bg-white/5 px-3 py-2 text-slate-400"
+          />
+        </label>
+      </div>
 
       <label className="block text-sm">
-        <span className="text-slate-400">Email</span>
-        <input
-          value={profile?.email ?? ""}
-          readOnly
-          className="mt-1 w-full rounded-xl border border-[var(--border)] bg-white/5 px-3 py-2 text-slate-400"
-        />
-      </label>
-
-      <label className="block text-sm">
-        <span className="text-slate-300">Full name *</span>
+        <span className="text-slate-300">{t("settings.fullName")} *</span>
         <input
           value={fullName}
           onChange={(e) => setFullName(e.target.value)}
           required
-          className="mt-1 w-full rounded-xl border border-[var(--border)] bg-[var(--surface)] px-3 py-2"
+          className={fieldClass}
         />
       </label>
 
       <label className="block text-sm">
-        <span className="text-slate-300">Display name</span>
+        <span className="text-slate-300">{t("settings.displayName")}</span>
         <input
           value={displayName}
           onChange={(e) => setDisplayName(e.target.value)}
-          className="mt-1 w-full rounded-xl border border-[var(--border)] bg-[var(--surface)] px-3 py-2"
+          className={fieldClass}
         />
       </label>
 
       <PhoneInput
-        label="Phone number"
+        label={t("settings.phone")}
         dial={phoneDial}
         national={phoneNational}
         onDialChange={setPhoneDial}
@@ -215,41 +330,22 @@ export function RegistrationForm() {
       />
 
       <label className="block text-sm">
-        <span className="text-slate-300">City / area *</span>
+        <span className="text-slate-300">{t("settings.city")} *</span>
         <input
           value={city}
           onChange={(e) => setCity(e.target.value)}
           required
-          className="mt-1 w-full rounded-xl border border-[var(--border)] bg-[var(--surface)] px-3 py-2"
+          className={fieldClass}
         />
       </label>
 
-      <div className="rounded-xl border border-[var(--border)] bg-white/5 p-4">
-        <div className="mono-tag mb-3">Emergency contact (optional)</div>
-        <label className="block text-sm">
-          <span className="text-slate-300">Contact name</span>
-          <input
-            value={emergencyName}
-            onChange={(e) => setEmergencyName(e.target.value)}
-            className="mt-1 w-full rounded-xl border border-[var(--border)] bg-[var(--surface)] px-3 py-2"
-          />
-        </label>
-        <div className="mt-3">
-          <PhoneInput
-            label="Contact phone"
-            dial={emergencyDial}
-            national={emergencyNational}
-            onDialChange={setEmergencyDial}
-            onNationalChange={setEmergencyNational}
-            error={emergencyPhoneError}
-          />
-        </div>
-      </div>
-
       {error && <p className="text-sm text-[var(--danger-soft)]">{error}</p>}
+      {saved && !error && (
+        <p className="text-sm text-emerald-300">{t("settings.saved")}</p>
+      )}
 
       <button type="submit" className="btn btn-primary w-full" disabled={saving}>
-        {saving ? "Saving..." : "Save and continue"}
+        {saving ? t("settings.saving") : submitLabel ?? t("settings.saveContinue")}
       </button>
     </form>
   );

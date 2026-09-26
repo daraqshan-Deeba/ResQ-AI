@@ -4,9 +4,11 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import type { UserProfile } from "@/lib/types";
+import { useAppLanguage } from "@/components/AppLanguageProvider";
 
 export function DashboardUserMenu() {
   const router = useRouter();
+  const { t } = useAppLanguage();
   const [profile, setProfile] = useState<UserProfile | null>(null);
 
   useEffect(() => {
@@ -55,7 +57,7 @@ export function DashboardUserMenu() {
         onClick={signOut}
         className="mt-3 w-full rounded-xl px-3 py-2 text-left text-sm text-slate-400 hover:bg-white/5"
       >
-        Sign out
+        {t("signOut")}
       </button>
     </div>
   );

@@ -14,7 +14,7 @@ def test_config_defaults_without_env():
         _env_file=None,
     )
     assert cfg.groq_api_key == ""
-    assert cfg.groq_model == "qwen/qwen3.6-27b"
+    assert cfg.groq_model == "openai/gpt-oss-20b"
     assert cfg.is_groq_available is False
     assert cfg.default_city == "Hyderabad"
 

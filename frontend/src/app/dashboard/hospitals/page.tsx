@@ -4,8 +4,11 @@ import { useEffect, useState } from "react";
 import { apiCall } from "@/lib/api";
 import { useUserLocation } from "@/hooks/useUserLocation";
 import type { Hospital } from "@/lib/types";
+import { useAppLanguage } from "@/components/AppLanguageProvider";
+import { PlaceMapThumb } from "@/components/LocationMap";
 
 export default function HospitalsPage() {
+  const { t } = useAppLanguage();
   const { coords, status: locStatus, error: locError, refresh } = useUserLocation(true);
   const [hospitals, setHospitals] = useState<Hospital[]>([]);
   const [status, setStatus] = useState("Finding your location...");
@@ -45,8 +48,11 @@ export default function HospitalsPage() {
     <div>
       <div className="flex items-start justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-semibold">Hospitals</h1>
-          <p className="mt-2 text-sm text-slate-400">{status}</p>
+          <h1 className="text-xl font-semibold sm:text-2xl">{t("hospitals.title")}</h1>
+          <p className="mt-1 text-sm text-slate-400">{status}</p>
+          <p className="mt-1 text-xs text-slate-500">
+            {t("hospitals.directory")}
+          </p>
         </div>
         <button
           type="button"
@@ -56,27 +62,44 @@ export default function HospitalsPage() {
           Refresh location
         </button>
       </div>
-      <div className="mt-6 grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+      <div className="glass-card mt-4 divide-y divide-white/10 p-3">
         {hospitals.map((h) => (
-          <div key={`${h.name}-${h.lat}`} className="glass-card p-5">
-            <div className="text-lg font-medium">➕ {h.name}</div>
-            {h.facility_type && (
-              <span className="mt-2 inline-block rounded-full bg-white/10 px-2 py-0.5 text-xs text-slate-300">
-                {h.facility_type}
-              </span>
+          <div
+            key={`${h.name}-${h.lat}`}
+            className="flex items-center gap-3 py-3 first:pt-0 last:pb-0"
+          >
+            <div className="min-w-0 flex-1">
+              <div className="font-medium text-white">➕ {h.name}</div>
+              {h.facility_type && (
+                <span className="mt-1 inline-block rounded-full bg-white/10 px-2 py-0.5 text-xs text-slate-300">
+                  {h.facility_type}
+                </span>
+              )}
+              {h.address && <p className="mt-0.5 truncate text-xs text-slate-400">📍 {h.address}</p>}
+              <div className="mt-1 flex flex-wrap items-center gap-3 text-xs">
+                {h.phone && (
+                  <a className="text-cyan-200 underline" href={`tel:${h.phone}`}>
+                    {h.phone}
+                  </a>
+                )}
+                <a
+                  href={`https://maps.google.com/?q=${h.lat},${h.lon}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-[var(--accent-soft)] underline"
+                >
+                  Open in Maps
+                </a>
+              </div>
+            </div>
+            {h.lat != null && h.lon != null && (
+              <PlaceMapThumb
+                lat={h.lat}
+                lon={h.lon}
+                label={h.name}
+                distanceKm={h.distance_km}
+              />
             )}
-            {h.address && <p className="mt-2 text-sm text-slate-400">📍 {h.address}</p>}
-            {typeof h.distance_km === "number" && (
-              <p className="mt-1 text-xs text-cyan-300">{h.distance_km.toFixed(1)} km away</p>
-            )}
-            <a
-              href={`https://maps.google.com/?q=${h.lat},${h.lon}`}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="mt-3 inline-block text-sm text-[var(--accent-soft)]"
-            >
-              Open in Maps
-            </a>
           </div>
         ))}
       </div>

@@ -6,6 +6,7 @@ from pydantic import ValidationError
 from app.auth import current_user_id, rate_limit, require_write_auth
 from app.http_utils import parse_json, validation_error_response
 from app.models.schemas import SosRequest
+from app.services import database_service
 from app.services.sos_dispatch import dispatch_sos
 
 logger = logging.getLogger("resq.sos")
@@ -22,11 +23,17 @@ def trigger_sos():
     except ValidationError as exc:
         return validation_error_response(exc)
 
+    user_id = current_user_id()
+    contact = database_service.get_emergency_contact(user_id)
     result = dispatch_sos(
         lat=payload.lat,
         lon=payload.lon,
         situation=payload.situation,
-        user_id=current_user_id(),
+        user_id=user_id,
         idempotency_key=payload.idempotency_key,
+        emergency_contact_phone=contact.get("phone"),
+        emergency_contact_name=contact.get("name"),
+        emergency_contact_relation=contact.get("relation"),
+        user_name=contact.get("user_name"),
     )
     return jsonify(result.model_dump())

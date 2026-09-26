@@ -43,6 +43,7 @@ export interface Hospital {
   distance_km?: number | null;
   address?: string | null;
   facility_type?: string | null;
+  phone?: string | null;
   source?: string | null;
 }
 
@@ -52,6 +53,9 @@ export interface Shelter {
   capacity: number;
   occupied: number;
   address?: string | null;
+  lat?: number | null;
+  lon?: number | null;
+  source?: string | null;
 }
 
 export interface Report {
@@ -60,6 +64,8 @@ export interface Report {
   message: string;
   verified: boolean;
   created_at: string;
+  lat?: number | null;
+  lon?: number | null;
   attachment_url?: string | null;
   attachment_mime?: string | null;
 }
@@ -78,6 +84,7 @@ export interface UserProfile {
   emergency_contact_phone?: string | null;
   emergency_contact_country_dial?: string | null;
   emergency_contact_national?: string | null;
+  emergency_contact_relation?: string | null;
   registration_complete?: boolean;
   created_at?: string;
   updated_at?: string;
@@ -102,6 +109,7 @@ export interface SosResponse {
   maps_link: string;
   message: string;
   emergency_contact_phone?: string | null;
+  sms_status?: "sent" | "failed" | "skipped";
 }
 
 export interface CommunityInsight {
@@ -150,4 +158,7 @@ export interface AssessmentResult {
   service_status?: Record<string, string>;
   source_labels?: Record<string, string>;
   community_insights?: CommunityInsight[];
+  understood_as?: string | null;
+  retrieved_examples?: Array<{ example?: string; category?: string; score?: number }>;
+  citations?: Array<{ source?: string; label?: string }>;
 }

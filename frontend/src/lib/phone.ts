@@ -129,3 +129,30 @@ export function formatPhoneDisplay(
   if (!parsed.national) return "";
   return `${parsed.dial} ${parsed.national}`;
 }
+
+/** RFC 3966 dialer URI. Short codes like 112 stay local; other numbers keep digits and a leading +. */
+export function toTelHref(phone: string): string {
+  const raw = phone.trim();
+  if (/^(112|108|100|101|102)$/.test(raw)) {
+    return `tel:${raw}`;
+  }
+  const cleaned = raw.replace(/[^\d+]/g, "");
+  if (!cleaned) return "";
+  return `tel:${cleaned}`;
+}
+
+export function extractDialNumber(text: string): string | null {
+  const trimmed = text.trim();
+  const short = trimmed.match(/\b(112|108|100|101|102)\b/);
+  if (short) return short[1];
+  const e164 = trimmed.match(/\+[1-9]\d{6,14}/);
+  if (e164) return e164[0];
+  const digits = trimmed.match(/(\d{3,})/);
+  return digits ? digits[1] : null;
+}
+
+export function openPhoneDialer(phone: string) {
+  const href = toTelHref(phone);
+  if (!href) return;
+  window.location.href = href;
+}

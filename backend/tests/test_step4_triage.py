@@ -118,6 +118,40 @@ class TestTier1DirectCategories:
         assert result.category == "injury"
         assert result.tier == 1
 
+    def test_injury_rtc_bus_fall_unable_to_walk(self):
+        result = _classify(
+            "I was travelling from RTC BUS and I fell. I am unable to walk"
+        )
+        assert result.category == "injury"
+        assert result.tier == 1
+
+    def test_injury_slipped_cannot_walk(self):
+        result = _classify("I slipped and cannot walk")
+        assert result.category == "injury"
+        assert result.tier == 1
+
+    def test_injury_fell_down_cannot_get_up(self):
+        result = _classify("I fell down and can't get up")
+        assert result.category == "injury"
+        assert result.tier == 1
+
+    def test_injury_garden_slip_knee_hurts(self):
+        result = _classify(
+            "i was walking through my garden and i slipped. my knee hurts what can i do"
+        )
+        assert result.category == "injury"
+        assert result.tier == 1
+
+    def test_accident_bus_highway_not_injury_fall(self):
+        result = _classify("bus accident on the highway")
+        assert result.category == "accident"
+        assert result.tier == 1
+
+    def test_fell_last_year_is_historical(self):
+        result = _classify("I fell last year")
+        assert result.category == "unclassified"
+        assert result.tier == 3
+
     def test_snakebite_variant_bitten(self):
         result = _classify("Someone was bitten by a snake in the garden.")
         assert result.category == "snakebite"

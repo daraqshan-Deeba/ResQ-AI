@@ -16,7 +16,7 @@ class Settings(BaseSettings):
         ),
     )
     groq_model: str = Field(
-        default="qwen/qwen3.6-27b",
+        default="openai/gpt-oss-20b",
         validation_alias=AliasChoices(
             "GROQ_MODEL", "GROK_MODEL", "groq_model", "grok_model"
         ),
@@ -77,6 +77,13 @@ class Settings(BaseSettings):
         validation_alias=AliasChoices(
             "FIREBASE_ALERT_TOPIC", "firebase_alert_topic"
         ),
+    )
+
+    # Fast2SMS (SOS SMS to the user's emergency contact)
+    # https://docs.fast2sms.com/reference/authorization
+    fast2sms_api_key: str = Field(
+        default="",
+        validation_alias=AliasChoices("FAST2SMS_API_KEY", "fast2sms_api_key"),
     )
 
     # Defaults (used when the client doesn't send a location)
@@ -240,12 +247,24 @@ class Settings(BaseSettings):
             "llm_evidence_tools_enabled",
         ),
     )
+    nlu_understand_enabled: bool = Field(
+        default=True,
+        validation_alias=AliasChoices(
+            "NLU_UNDERSTAND_ENABLED",
+            "nlu_understand_enabled",
+        ),
+    )
 
     model_config = SettingsConfigDict(
         env_file=str(_BACKEND_ENV),
         env_file_encoding="utf-8",
         extra="ignore",
     )
+
+    @field_validator("fast2sms_api_key", mode="before")
+    @classmethod
+    def _strip_fast2sms(cls, value: object) -> str:
+        return str(value or "").strip().strip('"').strip("'")
 
     @field_validator("redis_url", mode="before")
     @classmethod
@@ -284,6 +303,10 @@ class Settings(BaseSettings):
     @property
     def is_redis_cache_available(self) -> bool:
         return bool(self.redis_url.strip())
+
+    @property
+    def is_fast2sms_available(self) -> bool:
+        return bool(self.fast2sms_api_key.strip())
 
 
 settings = Settings()

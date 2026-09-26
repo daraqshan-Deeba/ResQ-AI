@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { apiCall } from "@/lib/api";
+import { useAppLanguage } from "@/components/AppLanguageProvider";
 
 type Message = { role: "user" | "assistant"; text: string };
 
@@ -19,16 +20,9 @@ function getOrCreateSessionId(): string {
   return id;
 }
 
-const initialMessages: Message[] = [
-  {
-    role: "assistant",
-    text:
-      "Hello. I can answer general safety questions. I am not for urgent emergencies. If someone needs help right away, use Get help or call 112 / 108.",
-  },
-];
-
 export function ChatWidget({ compact = false }: { compact?: boolean }) {
-  const [messages, setMessages] = useState<Message[]>(initialMessages);
+  const { language, t } = useAppLanguage();
+  const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [sending, setSending] = useState(false);
   const [sessionId, setSessionId] = useState("");
@@ -36,6 +30,10 @@ export function ChatWidget({ compact = false }: { compact?: boolean }) {
   useEffect(() => {
     setSessionId(getOrCreateSessionId());
   }, []);
+
+  useEffect(() => {
+    setMessages([{ role: "assistant", text: t("chat.hello") }]);
+  }, [language, t]);
 
   async function send() {
     const text = input.trim();
@@ -53,7 +51,8 @@ export function ChatWidget({ compact = false }: { compact?: boolean }) {
         history,
         message: text,
         session_id: sessionId || getOrCreateSessionId(),
-        actor_id: "resq-web-user",
+        actor_id: sessionId || getOrCreateSessionId(),
+        language,
       }),
     });
 
@@ -76,8 +75,8 @@ export function ChatWidget({ compact = false }: { compact?: boolean }) {
         <div className="mb-4 flex items-center gap-2">
           <span className="text-xl">🤖</span>
           <div>
-            <div className="text-sm font-medium">Chat</div>
-            <div className="mono-tag normal-case">Not for urgent emergencies</div>
+            <div className="text-sm font-medium">{t("chat")}</div>
+            <div className="mono-tag normal-case">{t("chat.subtitle")}</div>
           </div>
         </div>
       )}
@@ -105,7 +104,7 @@ export function ChatWidget({ compact = false }: { compact?: boolean }) {
           value={input}
           onChange={(e) => setInput(e.target.value)}
           onKeyDown={(e) => e.key === "Enter" && send()}
-          placeholder="Ask a general safety question..."
+          placeholder={t("chat.placeholder")}
           className="flex-1 rounded-xl border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-sm text-white outline-none"
         />
         <button className="btn btn-primary px-4 py-2" onClick={send} disabled={sending}>

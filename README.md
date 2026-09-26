@@ -161,12 +161,10 @@ When the user confirms an SOS request:
 
 1. The browser asks for location permission.
 2. The user's current coordinates are obtained.
-3. The coordinates are sent to the ResQ AI backend.
-4. The backend processes the SOS request.
+3. The backend records the SOS, then texts the signed-in user's emergency contact via Fast2SMS (same copy plus a maps link).
+4. The user can tap Call 112 or Call emergency contact to open the phone dialer.
 
-The current prototype demonstrates the technical flow of capturing and transmitting the user's location.
-
-> ⚠️ The current prototype does not automatically send the location to emergency services, police, hospitals, or a personal emergency contact unless such functionality is separately configured and implemented.
+SOS does **not** notify 112, police, or ambulance automatically. The SMS goes only to the personal emergency contact saved in Settings, and only if `FAST2SMS_API_KEY` is set.
 
 ---
 

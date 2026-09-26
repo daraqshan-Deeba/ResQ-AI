@@ -67,6 +67,7 @@ async def get_nearby_hospitals_safe(
                     lon=float(h_lon),
                     distance_km=round(distance_km, 2),
                     facility_type=row.get("facility_type"),
+                    phone=row.get("phone"),
                     source=row.get("source", default_source),
                 )
             )

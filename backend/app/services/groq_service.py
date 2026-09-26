@@ -20,6 +20,7 @@ from typing import Optional
 import httpx
 
 from app.core.config import settings
+from app.i18n.languages import GROQ_SMALL_MULTILINGUAL_MODEL, groq_language_phrase
 from app.models.schemas import AssessmentResponse, ServiceResult
 
 logger = logging.getLogger("resq.groq")
@@ -86,6 +87,7 @@ async def call_groq_safe(
     temperature: float = 0.3,
     response_format: Optional[dict] = None,
     tools: Optional[list] = None,
+    max_tokens: Optional[int] = None,
 ) -> ServiceResult[str]:
     api_key = settings.groq_api_key
     if not api_key or not api_key.strip():
@@ -110,15 +112,73 @@ async def call_groq_safe(
     if tools:
         payload["tools"] = tools
         payload["tool_choice"] = "auto"
+    if max_tokens is not None:
+        payload["max_tokens"] = max_tokens
 
+    models_to_try = [settings.groq_model]
+    if GROQ_SMALL_MULTILINGUAL_MODEL not in models_to_try:
+        models_to_try.append(GROQ_SMALL_MULTILINGUAL_MODEL)
+
+    last_error: ServiceResult[str] | None = None
     try:
         async with httpx.AsyncClient(timeout=30) as client:
-            resp = await client.post(GROQ_URL, headers=headers, json=payload)
-            resp.raise_for_status()
-            data = resp.json()
-        content = data["choices"][0]["message"]["content"]
-        return ServiceResult(available=True, data=content)
-
+            for model_id in models_to_try:
+                payload["model"] = model_id
+                try:
+                    resp = await client.post(GROQ_URL, headers=headers, json=payload)
+                    resp.raise_for_status()
+                    data = resp.json()
+                    message = data["choices"][0]["message"]
+                    content = message.get("content")
+                    if not content:
+                        last_error = ServiceResult(
+                            available=False,
+                            error_type="parse_error",
+                            detail="AI service returned an empty message.",
+                        )
+                        continue
+                    if model_id != settings.groq_model:
+                        logger.warning(
+                            "Groq model '%s' was unavailable; used '%s'.",
+                            settings.groq_model,
+                            model_id,
+                        )
+                    return ServiceResult(available=True, data=content)
+                except httpx.HTTPStatusError as exc:
+                    status = exc.response.status_code
+                    logger.warning(
+                        "Groq API returned HTTP %s for model '%s'.",
+                        status,
+                        model_id,
+                    )
+                    if status == 404 and model_id != models_to_try[-1]:
+                        continue
+                    if status in (401, 403):
+                        error_type = "auth_error"
+                        detail = "AI service authorization error."
+                    elif status == 404:
+                        error_type = "not_found"
+                        detail = "AI model or endpoint not found."
+                    elif status == 429:
+                        error_type = "rate_limited"
+                        detail = "AI service rate limit exceeded. Please try again shortly."
+                    elif status == 504:
+                        error_type = "timeout"
+                        detail = "AI service gateway timed out."
+                    elif status in (500, 502, 503):
+                        error_type = "server_error"
+                        detail = "AI service is temporarily unavailable."
+                    else:
+                        error_type = "server_error"
+                        detail = f"AI service responded with status {status}."
+                    return ServiceResult(available=False, error_type=error_type, detail=detail)
+        if last_error:
+            return last_error
+        return ServiceResult(
+            available=False,
+            error_type="not_found",
+            detail="AI model or endpoint not found.",
+        )
     except httpx.TimeoutException:
         logger.warning("Timeout while connecting to Groq API.")
         return ServiceResult(
@@ -126,32 +186,6 @@ async def call_groq_safe(
             error_type="timeout",
             detail="AI service request timed out.",
         )
-    except httpx.HTTPStatusError as exc:
-        status = exc.response.status_code
-        logger.warning(
-            "Groq API returned HTTP %s for model '%s'.",
-            status,
-            settings.groq_model,
-        )
-        if status in (401, 403):
-            error_type = "auth_error"
-            detail = "AI service authorization error."
-        elif status == 404:
-            error_type = "not_found"
-            detail = "AI model or endpoint not found."
-        elif status == 429:
-            error_type = "rate_limited"
-            detail = "AI service rate limit exceeded. Please try again shortly."
-        elif status == 504:
-            error_type = "timeout"
-            detail = "AI service gateway timed out."
-        elif status in (500, 502, 503):
-            error_type = "server_error"
-            detail = "AI service is temporarily unavailable."
-        else:
-            error_type = "server_error"
-            detail = f"AI service responded with status {status}."
-        return ServiceResult(available=False, error_type=error_type, detail=detail)
     except httpx.RequestError as exc:
         logger.warning("Network error connecting to Groq API: %s", type(exc).__name__)
         return ServiceResult(
@@ -246,7 +280,7 @@ def parse_response(raw_text: str) -> AssessmentResponse:
 async def run_assessment(description: str, city: str, language: str = "English") -> AssessmentResponse:
     """Isolated legacy Groq assessment. Not used by the orchestrator or /api/assessment."""
     messages = [
-        {"role": "system", "content": SYSTEM_INSTRUCTION.format(city=city, language=language)},
+        {"role": "system", "content": SYSTEM_INSTRUCTION.format(city=city, language=groq_language_phrase(language))},
         {"role": "user", "content": _build_prompt(description, city)},
     ]
     res = await call_groq_safe(messages, temperature=0.3)
@@ -270,6 +304,7 @@ async def run_chat_reply(
     message: str,
     city: str,
     memory_context: str | None = None,
+    language: str = "English",
 ) -> str:
     """Multi-turn call for the Assistant tab."""
     if not settings.groq_api_key or not settings.groq_api_key.strip():
@@ -285,6 +320,7 @@ async def run_chat_reply(
         f"For urgent or life-threatening situations, always direct the user to the "
         f"structured Emergency Assessment flow and to call 112 / 108 immediately.",
         f"You may answer general monsoon-safety questions for {city}, India.",
+        f"Reply in {groq_language_phrase(language)}. Never reply in English unless the selected language is English.",
     ]
     if memory_context:
         system_parts.append(memory_context)

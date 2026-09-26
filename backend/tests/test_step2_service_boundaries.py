@@ -282,6 +282,25 @@ async def test_groq_http_errors(monkeypatch, status, expected_error_type):
 
 
 @pytest.mark.anyio
+async def test_groq_retries_known_model_on_404(monkeypatch):
+    monkeypatch.setattr(settings, "groq_api_key", "gsk-test")
+    monkeypatch.setattr(settings, "groq_model", "qwen/qwen3.6-27b")
+    fail = make_mock_response(status_code=404)
+    ok = make_mock_response(
+        status_code=200,
+        json_data={"choices": [{"message": {"content": "protocol wording"}}]},
+    )
+    with patch("httpx.AsyncClient.post", new_callable=AsyncMock) as mock_post:
+        mock_post.side_effect = [fail, ok]
+        res = await groq_service.call_groq_safe([{"role": "user", "content": "Help"}])
+
+    assert res.available is True
+    assert res.data == "protocol wording"
+    assert mock_post.call_count == 2
+    assert mock_post.call_args_list[1].kwargs["json"]["model"] == "openai/gpt-oss-20b"
+
+
+@pytest.mark.anyio
 async def test_groq_timeout_and_network(monkeypatch):
     monkeypatch.setattr(settings, "groq_api_key", "gsk-test")
     with patch("httpx.AsyncClient.post", new_callable=AsyncMock) as mock_post:

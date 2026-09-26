@@ -3,7 +3,7 @@ Emergency Orchestrator Service — Step 7: Unified Emergency Assessment Pipeline
 
 The orchestrator is the single coordination layer that assembles:
   Stage 1 — Request Validation
-  Stage 2 — Authoritative Triage Classification
+  Stage 2 — Understand (optional LLM restatement) + retrieve similar incidents + classify
   Stage 3 — Deterministic Weather Risk Assessment
   Stage 4 — Advisory Action Planning
   Stage 5 — Centralized Weakest-Link Confidence Aggregation
@@ -46,6 +46,7 @@ from app.services import (
     triage_service,
     weather_service,
 )
+from app.i18n.languages import is_english_reply
 from app.services.action_planner_service import DEFAULT_TRUSTED_CONTACTS
 from app.services.evidence_map import required_evidence, weather_relevant as weather_is_relevant
 from app.services.protocol_service import protocol_key_for
@@ -236,7 +237,7 @@ async def orchestrate_emergency_assessment(
     # ── Stage 2: Authoritative Triage + safety net ────────────────────────────
     safety = detect_life_threats(description)
     try:
-        triage_res: TriageResult = await triage_service.classify(
+        triage_res, nlu_meta = await triage_service.classify_free_text(
             description,
             skip_llm=bool(safety.hits),
         )
@@ -249,8 +250,13 @@ async def orchestrate_emergency_assessment(
             matched_rule_or_example=None,
             explanation="Triage failed unexpectedly; treated as unknown, not safe.",
         )
+        nlu_meta = {"understood_as": None, "nlu_source": "error", "retrieved": []}
     triage_res.safety_hits = list(safety.hits)
-    protocol_key = protocol_key_for(triage_res.category, safety.protocol_key)
+    protocol_key = protocol_key_for(
+        triage_res.category,
+        safety.protocol_key,
+        triage_res.matched_rule_or_example,
+    )
     evidence_needed = required_evidence(triage_res.category, protocol_key)
     need_weather = weather_is_relevant(triage_res.category, protocol_key)
     has_location = lat is not None and lon is not None
@@ -300,6 +306,7 @@ async def orchestrate_emergency_assessment(
     action_context = ActionPlanContext(
         user_description=description,
         triage_category=triage_res.category,
+        reply_language=language,
         weather_risk=action_weather,
         location_context={"city": effective_city, "lat": lat, "lon": lon},
         available_services={
@@ -310,7 +317,7 @@ async def orchestrate_emergency_assessment(
         trusted_contacts=DEFAULT_TRUSTED_CONTACTS,
     )
 
-    skip_llm = bool(safety.hits) or triage_res.tier == 1
+    skip_llm = bool(safety.hits)
     action_plan, action_plan_source, groq_status = await action_planner_service.generate_action_plan_with_provenance(
         action_context,
         protocol_key=protocol_key,
@@ -337,7 +344,7 @@ async def orchestrate_emergency_assessment(
         weather_relevant=need_weather and has_location,
         triage_state=triage_state,
         weather_state=weather_state,
-        guidance_state="standard_protocol",
+        guidance_state="protocol_plus_ai" if groq_status == "available" else "standard_protocol",
     )
 
     # ── Stage 6: Hospitals when required and location present ─────────────────
@@ -403,6 +410,31 @@ async def orchestrate_emergency_assessment(
         maps_status,
         len(community_insights),
     )
+    if nlu_meta.get("nlu_source") and nlu_meta["nlu_source"] != "passthrough":
+        source_labels["understood"] = str(nlu_meta["nlu_source"])
+    if nlu_meta.get("retrieved"):
+        source_labels["similar_incidents"] = "retrieved_examples"
+    if groq_status == "available":
+        source_labels["wording"] = "groq_grounded"
+
+    citations = [
+        {
+            "source": "models",
+            "label": f"{triage_res.category} · tier {triage_res.tier}",
+        },
+        {"source": "protocol", "label": protocol_key},
+    ]
+    for hit in (nlu_meta.get("retrieved") or [])[:3]:
+        example = str(hit.get("example") or "").strip()
+        if example:
+            citations.append({"source": "similar_example", "label": example[:160]})
+    if groq_status == "available":
+        citations.append(
+            {
+                "source": "groq",
+                "label": "Wording only; first-aid lines copied from the cited protocol",
+            }
+        )
     try:
         from app.services.evidence_tools import maybe_run_llm_evidence_tools
 
@@ -433,6 +465,8 @@ async def orchestrate_emergency_assessment(
         "Flashlight, whistle, and charged power bank",
         "Government identification documents in a waterproof bag",
     ]
+    evac_keys = {"flooding", "cyclone", "fire", "structural_damage"}
+    things_to_carry = standard_items if protocol_key in evac_keys else []
 
     return AssessmentResult(
         triage=triage_res,
@@ -446,12 +480,17 @@ async def orchestrate_emergency_assessment(
         source_labels=source_labels,
         safety_hits=list(safety.hits),
         protocol_key=protocol_key,
+        understood_as=nlu_meta.get("understood_as")
+        if is_english_reply(language)
+        else (action_plan.explanation or nlu_meta.get("understood_as")),
+        retrieved_examples=list(nlu_meta.get("retrieved") or []),
+        citations=citations,
         emergency_level=emergency_level,
         whats_happening=whats_happening,
         immediate_first_aid=action_plan.immediate_actions,
         what_not_to_do=action_plan.safety_warnings,
         call_these_services=action_plan.emergency_contacts,
-        things_to_carry=standard_items,
+        things_to_carry=things_to_carry,
         nearby_help=nearby_help,
         raw_text=action_plan.explanation,
     )

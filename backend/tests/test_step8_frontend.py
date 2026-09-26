@@ -47,13 +47,8 @@ def test_2_assessment_has_description_input():
 
 def test_3_assessment_has_submit_action():
     page = read_assessment_page()
-    assert "Get help" in page
     assert "runAssessment" in page
-
-
-def test_4_assessment_has_result_state():
-    page = read_assessment_page()
-    assert "setResult" in page or "result" in page
+    assert "help.submit" in page
 
 
 def test_5_assessment_is_voice_or_type():
@@ -65,8 +60,8 @@ def test_5_assessment_is_voice_or_type():
 
 def test_6_sos_requires_explicit_confirm():
     page = read_sos_modal()
-    assert "Confirm SOS" in page
     assert "confirmSos" in page
+    assert "sos.confirm" in page
 
 
 def test_7_api_client_exists():

@@ -255,6 +255,45 @@ def list_device_tokens(*, user_id: str | None = None) -> list[str]:
         return []
 
 
+def get_emergency_contact(user_id: str | None) -> dict[str, str | None]:
+    """Return the signed-in user's emergency contact from profiles (service role)."""
+    empty = {"name": None, "phone": None, "relation": None, "user_name": None}
+    if not supabase_available or not user_id:
+        return empty
+    try:
+        response = (
+            _table("profiles")
+            .select(
+                "emergency_contact_name,emergency_contact_phone,"
+                "emergency_contact_relation,display_name,full_name"
+            )
+            .eq("id", user_id)
+            .limit(1)
+            .execute()
+        )
+        rows = response.data or []
+        if not rows:
+            return empty
+        row = rows[0]
+        phone = (row.get("emergency_contact_phone") or "").strip() or None
+        name = (row.get("emergency_contact_name") or "").strip() or None
+        relation = (row.get("emergency_contact_relation") or "").strip() or None
+        user_name = (
+            (row.get("display_name") or "").strip()
+            or (row.get("full_name") or "").strip()
+            or None
+        )
+        return {
+            "name": name,
+            "phone": phone,
+            "relation": relation,
+            "user_name": user_name,
+        }
+    except Exception as exc:
+        logger.warning("get_emergency_contact failed: %s", exc)
+        return empty
+
+
 _HOSPITAL_COLUMNS = frozenset(
     {
         "name",
