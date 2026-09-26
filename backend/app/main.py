@@ -1,4 +1,4 @@
-from flask import Flask, jsonify
+from flask import Flask, jsonify, make_response, request
 from flask_cors import CORS
 
 from app.blueprints import (
@@ -22,6 +22,20 @@ from app.i18n.languages import language_catalog
 from app.services import firebase_service, supabase_service  # noqa: F401
 
 
+def _open_cors(response):
+    origin = request.headers.get("Origin") or "*"
+    response.headers["Access-Control-Allow-Origin"] = origin
+    response.headers["Vary"] = "Origin"
+    response.headers["Access-Control-Allow-Methods"] = (
+        "GET, POST, PUT, PATCH, DELETE, OPTIONS, HEAD"
+    )
+    requested = request.headers.get("Access-Control-Request-Headers")
+    response.headers["Access-Control-Allow-Headers"] = requested or "*"
+    response.headers["Access-Control-Allow-Private-Network"] = "true"
+    response.headers["Access-Control-Max-Age"] = "86400"
+    return response
+
+
 def create_app() -> Flask:
     app = Flask(__name__)
 
@@ -35,6 +49,15 @@ def create_app() -> Flask:
         expose_headers="*",
         methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS", "HEAD"],
     )
+
+    @app.before_request
+    def _private_network_preflight():
+        if request.method == "OPTIONS":
+            return _open_cors(make_response("", 204))
+
+    @app.after_request
+    def _private_network_cors(response):
+        return _open_cors(response)
 
     app.register_blueprint(assessment_bp)
     app.register_blueprint(chat_bp)

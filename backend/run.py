@@ -26,7 +26,7 @@ if __name__ == "__main__":
     # Default 8001: port 8000 is often left occupied by stale Flask processes on Windows.
     port = int(os.environ.get("PORT", "8001"))
     try:
-        app.run(host="127.0.0.1", port=port, debug=True, use_reloader=False)
+        app.run(host="0.0.0.0", port=port, debug=True, use_reloader=False)
     except OSError as exc:
         logger.error(
             "Could not bind to port %s (%s). Another stale backend may still be running — "
