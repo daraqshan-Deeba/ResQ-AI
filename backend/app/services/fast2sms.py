@@ -77,11 +77,14 @@ def send_sos_sms(
 ) -> SmsStatus:
     """Return sent | skipped | failed. Never raises to the SOS caller."""
     if not is_smsable_phone(to_phone):
+        logger.warning("SOS SMS skipped: phone is missing or not a personal mobile")
         return "skipped"
     number = to_fast2sms_number(to_phone or "")
     if not number:
+        logger.warning("SOS SMS skipped: phone is not a 10-digit Indian mobile")
         return "skipped"
     if not fast2sms_configured():
+        logger.warning("SOS SMS skipped: FAST2SMS_API_KEY is not set")
         return "skipped"
 
     body = build_sos_sms_body(
@@ -101,12 +104,15 @@ def send_sos_sms(
                 json={
                     "route": "q",
                     "message": body,
+                    "language": "english",
+                    "flash": 0,
                     "numbers": number,
                 },
             )
             response.raise_for_status()
             payload = response.json()
         if payload.get("return") is True:
+            logger.info("Fast2SMS SOS SMS sent")
             return "sent"
         logger.warning("Fast2SMS SOS SMS rejected")
         return "failed"

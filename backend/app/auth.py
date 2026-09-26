@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import inspect
+import logging
 import time
 from functools import wraps
 from typing import Callable
@@ -12,11 +13,21 @@ from flask import g, jsonify, request
 
 from app.core.config import settings
 
+logger = logging.getLogger("resq.auth")
+
 _buckets: dict[str, list[float]] = {}
+_jwks_client: jwt.PyJWKClient | None = None
+_jwks_url: str = ""
 
 
 def reset_rate_limit_buckets() -> None:
     _buckets.clear()
+
+
+def reset_jwks_client() -> None:
+    global _jwks_client, _jwks_url
+    _jwks_client = None
+    _jwks_url = ""
 
 
 def _client_key() -> str:
@@ -67,28 +78,69 @@ def current_user_id() -> str | None:
     return getattr(g, "user_id", None)
 
 
+def _jwks() -> jwt.PyJWKClient:
+    global _jwks_client, _jwks_url
+    url = settings.supabase_url.rstrip("/") + "/auth/v1/.well-known/jwks.json"
+    if _jwks_client is None or _jwks_url != url:
+        _jwks_client = jwt.PyJWKClient(url, cache_keys=True)
+        _jwks_url = url
+    return _jwks_client
+
+
+def decode_access_token(token: str) -> dict | None:
+    """Verify a Supabase access token (legacy HS256 or current ES256 JWKS)."""
+    token = (token or "").strip()
+    if not token:
+        return None
+    try:
+        header = jwt.get_unverified_header(token)
+    except jwt.PyJWTError:
+        return None
+    alg = str(header.get("alg") or "HS256")
+
+    try:
+        if alg == "HS256":
+            secret = settings.supabase_jwt_secret.strip()
+            if not secret:
+                return None
+            payload = jwt.decode(
+                token,
+                secret,
+                algorithms=["HS256"],
+                options={"verify_aud": False},
+            )
+        elif alg in {"ES256", "RS256"}:
+            key = _jwks().get_signing_key_from_jwt(token)
+            payload = jwt.decode(
+                token,
+                key.key,
+                algorithms=[alg],
+                options={"verify_aud": False},
+            )
+        else:
+            logger.warning("Unsupported JWT alg %s", alg)
+            return None
+    except jwt.PyJWTError as exc:
+        logger.warning("JWT verify failed (%s): %s", alg, type(exc).__name__)
+        return None
+
+    return payload if isinstance(payload, dict) else None
+
+
 def require_write_auth(fn: Callable):
     def _authorize():
         header = request.headers.get("Authorization", "")
         token = header[7:].strip() if header.startswith("Bearer ") else ""
-        secret = settings.supabase_jwt_secret.strip()
-
-        if token and secret:
-            try:
-                payload = jwt.decode(
-                    token,
-                    secret,
-                    algorithms=["HS256"],
-                    options={"verify_aud": False},
-                )
-                g.user_id = payload.get("sub")
-            except jwt.PyJWTError:
-                if settings.api_auth_required:
-                    return jsonify({"detail": "Invalid or expired token"}), 401
-        elif settings.api_auth_required:
+        payload = decode_access_token(token) if token else None
+        if payload and payload.get("sub"):
+            g.user_id = str(payload["sub"])
+            return None
+        if settings.api_auth_required:
             if not token:
                 return jsonify({"detail": "Authentication required"}), 401
-            return jsonify({"detail": "Auth is not configured"}), 503
+            if not settings.supabase_jwt_secret.strip() and not settings.supabase_url.strip():
+                return jsonify({"detail": "Auth is not configured"}), 503
+            return jsonify({"detail": "Invalid or expired token"}), 401
         return None
 
     if inspect.iscoroutinefunction(fn):

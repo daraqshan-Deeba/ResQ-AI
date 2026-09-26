@@ -25,6 +25,10 @@ def trigger_sos():
 
     user_id = current_user_id()
     contact = database_service.get_emergency_contact(user_id)
+    if not user_id:
+        logger.warning("SOS has no signed-in user; emergency-contact SMS will be skipped")
+    elif not contact.get("phone"):
+        logger.warning("SOS user has no emergency contact phone on profile")
     result = dispatch_sos(
         lat=payload.lat,
         lon=payload.lon,
