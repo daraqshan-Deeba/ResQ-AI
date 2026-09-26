@@ -34,6 +34,7 @@ import unicodedata
 from typing import Optional
 
 from app.models.schemas import EmergencyCategory, TriageResult
+from app.services.severity import category_base_level, LEVEL_RANK
 
 logger = logging.getLogger("resq.triage")
 
@@ -238,9 +239,40 @@ _TEMPORAL_PAST_PATTERNS: list[re.Pattern] = [
     re.compile(r"\bused\s+to\b", re.IGNORECASE),
 ]
 
+_PRESENT_TENSE_MARKERS: list[re.Pattern] = [
+    re.compile(r"\b(now|currently|right now|still)\b", re.IGNORECASE),
+    re.compile(r"\b(cannot breathe|can't breathe|not breathing)\b", re.IGNORECASE),
+]
+
+_QUESTION_FORM = re.compile(
+    r"^\s*(is this|is it|could this be|do i have|should i)\b",
+    re.IGNORECASE,
+)
+
+_NEGATION_BY_CATEGORY: dict[str, re.Pattern] = {
+    "flooding": re.compile(r"\b(no|not a|not an|without|isn't any)\s+(flood|flooding|floodwater)\b", re.I),
+    "accident": re.compile(r"\b(no|not a|not an)\s+(accident|crash|collision)\b", re.I),
+    "snakebite": re.compile(r"\b(no|not a)\s+snake\s*(bite)?\b", re.I),
+    "fire": re.compile(r"\b(no|not a)\s+fire\b", re.I),
+}
+
+
 def _is_likely_historical(norm_text: str) -> bool:
     """Return True if temporal markers suggest this is a past/historical report."""
     return any(p.search(norm_text) for p in _TEMPORAL_PAST_PATTERNS)
+
+
+def _is_present_danger(norm_text: str) -> bool:
+    return any(p.search(norm_text) for p in _PRESENT_TENSE_MARKERS)
+
+
+def _category_negated(category: str, norm_text: str) -> bool:
+    pattern = _NEGATION_BY_CATEGORY.get(category)
+    return bool(pattern and pattern.search(norm_text))
+
+
+def _pick_primary_category(categories: list[str]) -> str:
+    return max(categories, key=lambda c: LEVEL_RANK.get(category_base_level(c), 0))
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -274,28 +306,35 @@ def _tier1_classify(norm_text: str) -> TriageResult | None:
     if len(unique_categories) == 0:
         return None  # no match → proceed to Tier 2
 
-    if len(unique_categories) > 1:
-        # Step 4E: multiple categories → ambiguous → do not claim high confidence
-        logger.debug("Tier1: conflicting matches %s — escalating to Tier2.", unique_categories)
+    unique_categories = [c for c in unique_categories if not _category_negated(c, norm_text)]
+    if not unique_categories:
         return None
 
-    # Exactly one category matched
-    category = unique_categories[0]
-    rule_label = matched_categories[0][1]
+    if _QUESTION_FORM.search(norm_text) and not _is_present_danger(norm_text):
+        return None
 
-    # Historical guard: lower confidence for past-tense accident/injury reports
-    if _is_likely_historical(norm_text):
+    category = _pick_primary_category(unique_categories)
+    rule_label = next(label for cat, label in matched_categories if cat == category)
+
+    if _is_likely_historical(norm_text) and not _is_present_danger(norm_text):
         logger.debug("Tier1: matched '%s' but temporal markers suggest historical.", category)
-        return None  # Pass to Tier 2 which handles semantics better
+        return None
+
+    confidence = _HIGH_CONFIDENCE if len(unique_categories) == 1 else 0.82
+    extra = ""
+    if len(unique_categories) > 1:
+        extra = f" Multiple hazards matched ({', '.join(unique_categories)}); using highest-severity category."
 
     return TriageResult(
-        category=category,
-        confidence=_HIGH_CONFIDENCE,
+        category=category,  # type: ignore[arg-type]
+        confidence=confidence,
         tier=1,
         matched_rule_or_example=rule_label,
+        candidate_categories=unique_categories,
         explanation=(
             f"Keyword rule matched '{rule_label}' in the description. "
             f"Category determined deterministically as '{category}'."
+            + extra
         ),
     )
 
@@ -593,7 +632,7 @@ async def _tier3_classify(original_text: str) -> TriageResult:
 # Public entry point
 # ─────────────────────────────────────────────────────────────────────────────
 
-async def classify(description: str) -> TriageResult:
+async def classify(description: str, *, skip_llm: bool = False) -> TriageResult:
     """Classify an emergency description via the three-tier cascade.
 
     Tier 1 (deterministic keyword rules) →
@@ -631,7 +670,7 @@ async def classify(description: str) -> TriageResult:
     # Historical / past-tense reports are not active emergencies — skip
     # keyword/embedding/ML tiers that would over-fit on lexical overlap
     # (e.g. "years ago I had a car accident" → accident).
-    if _is_likely_historical(norm_text):
+    if _is_likely_historical(norm_text) and not _is_present_danger(norm_text):
         logger.debug("Triage: temporal markers suggest historical report.")
         return TriageResult(
             category="unclassified",
@@ -669,7 +708,7 @@ async def classify(description: str) -> TriageResult:
 
         if settings.triage_ml_enabled:
             t2ml = classify_ml(norm_text)
-            if t2ml is not None:
+            if t2ml is not None and t2ml.category != "unclassified":
                 logger.debug(
                     "Triage resolved at ML tier: %s (%.2f)", t2ml.category, t2ml.confidence
                 )
@@ -678,6 +717,9 @@ async def classify(description: str) -> TriageResult:
         logger.warning("Triage ML: Unexpected error: %s. Continuing to Tier 3.", exc)
 
     # ── Tier 3 ──────────────────────────────────────────────────────────────
+    if skip_llm:
+        return _unclassified_default
+
     try:
         t3 = await _tier3_classify(safe_description)
         logger.debug("Triage resolved at Tier 3: %s (%.2f)", t3.category, t3.confidence)

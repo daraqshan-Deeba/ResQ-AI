@@ -47,6 +47,7 @@ create table if not exists public.sos_events (
 
 create table if not exists public.device_tokens (
     token text primary key,
+    user_id uuid,
     registered_at timestamptz not null default now()
 );
 
@@ -100,11 +101,17 @@ create policy "public read community reports"
     on public.community_reports for select using (true);
 
 drop policy if exists "public insert community reports" on public.community_reports;
-create policy "public insert community reports"
-    on public.community_reports for insert with check (true);
+create policy "authenticated insert community reports"
+    on public.community_reports for insert
+    with check (
+        auth.role() = 'authenticated'
+        and verified = false
+    );
 
 drop policy if exists "public read hospitals" on public.hospitals;
 create policy "public read hospitals"
     on public.hospitals for select using (true);
+
+alter table public.device_tokens add column if not exists user_id uuid;
 
 -- Also run: schema_vectors.sql, schema_auth.sql

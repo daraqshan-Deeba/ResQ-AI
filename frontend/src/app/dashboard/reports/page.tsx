@@ -106,8 +106,10 @@ export default function ReportsPage() {
             <div className="min-w-0 flex-1">
               <div className="flex items-center gap-2">
                 <b>{r.area}</b>
-                {r.verified && (
+                {r.verified ? (
                   <span className="text-xs text-[var(--accent-soft)]">Checked</span>
+                ) : (
+                  <span className="text-xs text-amber-300">Unverified</span>
                 )}
               </div>
               <p className="mt-1 text-sm">{r.message}</p>

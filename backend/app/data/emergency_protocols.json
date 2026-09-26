@@ -1,0 +1,304 @@
+{
+  "version": 1,
+  "contacts": [
+    "National Emergency Response: 112",
+    "Emergency Medical / Ambulance: 108",
+    "Disaster Management Helpline: 1070"
+  ],
+  "plans": {
+    "flooding": {
+      "immediate_actions": [
+        "Move to higher ground immediately if water is rising around your location.",
+        "Avoid walking, swimming, or driving through floodwater.",
+        "Turn off the main electrical breaker if safe to reach before water touches it.",
+        "Signal for assistance from a visible, elevated position if trapped."
+      ],
+      "safety_warnings": [
+        "Do not touch submerged electrical appliances, sockets, or fallen wires.",
+        "Do not drive into flooded roads or underpasses; moving water can sweep vehicles away.",
+        "Avoid drinking tap water in flood zones until declared safe."
+      ],
+      "when_to_seek_help": [
+        "Water is entering living areas and you cannot safely evacuate.",
+        "Vulnerable individuals (elderly, children, injured) are trapped or cut off.",
+        "Floodwaters continue to rise rapidly with no higher ground accessible."
+      ],
+      "questions_to_ask_user": [
+        "Are you currently on an upper floor or elevated safe ground?",
+        "Is the water level continuing to rise inside your structure?"
+      ],
+      "explanation": "Deterministic flood response protocol prioritizing vertical evacuation, electrical isolation, and rescue signaling."
+    },
+    "electrocution": {
+      "immediate_actions": [
+        "Do not touch the victim while electrical current may still be live.",
+        "Switch off the main power source or circuit breaker immediately if safely accessible.",
+        "Use a dry, non-conductive object (wooden stick, plastic broom) to separate the person if the switch cannot be reached.",
+        "Call 108 (Ambulance) and 112 immediately."
+      ],
+      "safety_warnings": [
+        "Never step into standing water near fallen power lines or exposed wiring.",
+        "Do not touch the person with bare hands or wet materials while contact persists.",
+        "Do not attempt to move high-voltage power lines yourself."
+      ],
+      "when_to_seek_help": [
+        "Any electrical shock, loss of consciousness, burns, or difficulty breathing requires emergency medical evaluation.",
+        "Fallen power lines in public or residential areas must be reported to 112 and the power utility immediately."
+      ],
+      "questions_to_ask_user": [
+        "Has the electrical power source been completely disconnected?",
+        "Is the victim breathing, conscious, and responsive?"
+      ],
+      "explanation": "Deterministic electrical hazard protocol prioritizing rescuer safety, power isolation, and immediate emergency medical dispatch."
+    },
+    "injury": {
+      "immediate_actions": [
+        "Apply firm, continuous pressure to bleeding wounds using a clean cloth or sterile dressing.",
+        "Keep the injured person lying down, warm, and calm.",
+        "Immobilize injured limbs in the position found; do not attempt to straighten broken bones.",
+        "Call 108 (Ambulance) for emergency medical assistance."
+      ],
+      "safety_warnings": [
+        "Do not move the injured person unnecessarily if neck, spinal, or severe trauma is suspected.",
+        "Do not remove deeply embedded objects from wounds; stabilize them in place with dressings.",
+        "Do not give food or drink to an unconscious or severely injured person."
+      ],
+      "when_to_seek_help": [
+        "Arterial or spurting bleeding that does not stop after 10 minutes of direct pressure.",
+        "Victim is unconscious, disoriented, or having difficulty breathing.",
+        "Suspected fracture, spinal injury, or severe head trauma."
+      ],
+      "questions_to_ask_user": [
+        "Is the injured person conscious, breathing, and able to respond?",
+        "Is bleeding controlled or continuing despite continuous pressure?"
+      ],
+      "explanation": "Deterministic trauma first-aid protocol emphasizing hemorrhage control, spinal immobilization, and urgent medical escalation."
+    },
+    "snakebite": {
+      "immediate_actions": [
+        "Keep the person completely still and calm to slow the spread of venom.",
+        "Immobilize the bitten limb at or slightly below heart level.",
+        "Remove rings, tight bracelets, and restrictive clothing before swelling begins.",
+        "Arrange immediate transport to the nearest hospital with antivenom."
+      ],
+      "safety_warnings": [
+        "Do NOT cut, slash, or incise the bite wound.",
+        "Do NOT attempt to suck out the venom by mouth or mechanical pump.",
+        "Do NOT apply an arterial tourniquet, ice pack, or chemical remedies.",
+        "Do NOT attempt to capture or kill the snake; note its description or photograph from a safe distance only."
+      ],
+      "when_to_seek_help": [
+        "All snakebites require urgent medical evaluation at a hospital equipped with anti-snake venom (ASV).",
+        "Seek immediate help if swelling spreads, breathing becomes labored, or vision blurs."
+      ],
+      "questions_to_ask_user": [
+        "Approximately how long ago did the snakebite occur?",
+        "Are you experiencing spreading swelling, severe pain, or difficulty swallowing/breathing?"
+      ],
+      "explanation": "Deterministic snakebite protocol strictly prohibiting harmful folk interventions and prioritizing rapid immobilization and hospital antivenom access."
+    },
+    "cyclone": {
+      "immediate_actions": [
+        "Remain inside a sturdy, permanent (pucca) structure away from exterior walls.",
+        "Stay away from glass windows, skylights, and unreinforced roofs.",
+        "Unplug electrical appliances to protect against power surges and lightning.",
+        "Keep emergency battery lights, water, and identity documents packed and accessible."
+      ],
+      "safety_warnings": [
+        "Do not venture outside during the 'eye' of the storm; extreme winds will resume abruptly from the opposite direction.",
+        "Stay clear of tin roofs, loose signboards, tall trees, and electrical poles.",
+        "Avoid driving on coastal roads or low-lying causeways subject to storm surge."
+      ],
+      "when_to_seek_help": [
+        "Structural components of your shelter begin failing or roof sheets tear off.",
+        "Storm surge or floodwater begins inundating your shelter location."
+      ],
+      "questions_to_ask_user": [
+        "Are you currently sheltering in a concrete (pucca) building?",
+        "Is your location under an active coastal evacuation order?"
+      ],
+      "explanation": "Deterministic cyclone safety protocol prioritizing interior sheltering, storm eye awareness, and wind/surge avoidance."
+    },
+    "structural_damage": {
+      "immediate_actions": [
+        "Evacuate the damaged structure immediately if safe escape routes exist.",
+        "Move to an open space clear of exterior walls, overhead cornices, and falling debris.",
+        "If trapped under rubble, tap rhythmically on a pipe or wall to signal rescuers rather than shouting continuously.",
+        "Call 112 and Disaster Management (1070) immediately."
+      ],
+      "safety_warnings": [
+        "Do not re-enter a damaged, cracked, or tilted building under any circumstances.",
+        "Do not use elevators; use stairwells cautiously after checking for integrity.",
+        "Do not ignite matches, lighters, or open flames due to potential ruptured gas lines."
+      ],
+      "when_to_seek_help": [
+        "Anyone is trapped under collapsed debris or unaccounted for.",
+        "Building shows widening cracks, sagging floors, or loud structural creaking."
+      ],
+      "questions_to_ask_user": [
+        "Is anyone trapped, injured, or unaccounted for inside the building?",
+        "Are you currently clear of the exterior collapse impact zone?"
+      ],
+      "explanation": "Deterministic structural collapse plan focusing on rapid evacuation, perimeter safety, and trapped-person location signaling."
+    },
+    "accident": {
+      "immediate_actions": [
+        "Move to a safe roadside position away from oncoming traffic if physically able.",
+        "Activate vehicle hazard lights and place warning triangles if safe to do so.",
+        "Check all involved persons for responsiveness, breathing, and major bleeding.",
+        "Call 108 (Ambulance) and 112 (Emergency / Police) immediately."
+      ],
+      "safety_warnings": [
+        "Do not move severely injured or unconscious victims unless there is immediate danger of fire or explosion.",
+        "Do not stand in active traffic lanes to photograph or inspect vehicle damage.",
+        "Do not remove motorcycle helmets from injured riders unless airway is blocked."
+      ],
+      "when_to_seek_help": [
+        "Any severe collision, head injury, loss of consciousness, or trapped vehicle occupant requires emergency response.",
+        "Fuel spills, smoke, or fire risk at the collision scene require immediate fire and police dispatch."
+      ],
+      "questions_to_ask_user": [
+        "Are any vehicles on fire or actively leaking fuel?",
+        "How many individuals require emergency medical attention?"
+      ],
+      "explanation": "Deterministic vehicular incident protocol focusing on secondary crash prevention, spinal protection, and rapid multi-service dispatch."
+    },
+    "unclassified": {
+      "immediate_actions": [
+        "Call 112 (National Emergency) or 108 (Medical Ambulance) now if anyone is in danger.",
+        "Move yourself and others to a secure location away from immediate danger if you can do so safely.",
+        "Provide the dispatcher with your exact location and clearly describe what is happening.",
+        "Stay on the line and follow dispatcher instructions."
+      ],
+      "safety_warnings": [
+        "Do not assume an unclassified situation is low risk.",
+        "Do not enter unknown hazardous zones without verified information or emergency personnel."
+      ],
+      "when_to_seek_help": [
+        "Seek emergency help immediately if there is danger to life, severe injury, or structural threat."
+      ],
+      "questions_to_ask_user": [
+        "Can you describe the primary danger or hazard you are facing?",
+        "Are you or anyone near you currently injured, trapped, or in direct danger?"
+      ],
+      "explanation": "Unknown hazard treated as urgent: escalate to 112/108 rather than assuming the situation is safe."
+    },
+    "fire": {
+      "immediate_actions": [
+        "Leave the building immediately. Do not stop to collect belongings.",
+        "Stay low under smoke and close doors behind you if you can.",
+        "Call 112 / fire services once you are outside.",
+        "If clothes are on fire, stop, drop, and roll."
+      ],
+      "safety_warnings": [
+        "Do not use elevators.",
+        "Do not go back inside for people, pets, or property.",
+        "Do not open hot doors; feel the door with the back of your hand first."
+      ],
+      "when_to_seek_help": [
+        "Anyone is missing, burned, or having trouble breathing from smoke."
+      ],
+      "questions_to_ask_user": [
+        "Are you already outside the building?",
+        "Is anyone unaccounted for?"
+      ],
+      "explanation": "Deterministic fire protocol: evacuate first, then call emergency services."
+    },
+    "gas_leak": {
+      "immediate_actions": [
+        "Do not switch lights or electrical devices on or off.",
+        "Do not light matches or use a phone in the leak area.",
+        "Leave the area immediately, moving upwind if outdoors.",
+        "Call 112 from a safe distance."
+      ],
+      "safety_warnings": [
+        "Do not operate electrical switches.",
+        "Do not attempt to locate the leak with a flame."
+      ],
+      "when_to_seek_help": [
+        "Anyone is dizzy, nauseous, or unconscious near a suspected leak."
+      ],
+      "questions_to_ask_user": [
+        "Have you left the area?",
+        "Is anyone feeling ill?"
+      ],
+      "explanation": "Deterministic gas-leak protocol: avoid ignition sources and evacuate."
+    },
+    "medical_emergency": {
+      "immediate_actions": [
+        "Call 108 / 112 immediately.",
+        "If the person is unresponsive and not breathing normally, begin CPR if you are trained.",
+        "Keep the airway open and do not give food or drink.",
+        "Stay with the person until help arrives."
+      ],
+      "safety_warnings": [
+        "Do not delay calling emergency services to search for a diagnosis.",
+        "Do not give medications unless a dispatcher or clinician instructs you."
+      ],
+      "when_to_seek_help": [
+        "Chest pain, trouble breathing, choking, or collapse always requires emergency medical care."
+      ],
+      "questions_to_ask_user": [
+        "Is the person conscious and breathing?",
+        "How long have symptoms been present?"
+      ],
+      "explanation": "Deterministic medical life-threat protocol: call ambulance first."
+    },
+    "drowning": {
+      "immediate_actions": [
+        "Call 112 / 108 immediately.",
+        "Reach or throw — do not enter fast or deep water unless trained.",
+        "Once the person is on land, check breathing and start CPR if trained and they are not breathing."
+      ],
+      "safety_warnings": [
+        "Do not become a second victim by swimming into dangerous water."
+      ],
+      "when_to_seek_help": [
+        "Any submersion with coughing, confusion, or lost consciousness needs emergency care."
+      ],
+      "questions_to_ask_user": [
+        "Is the person out of the water?",
+        "Are they breathing?"
+      ],
+      "explanation": "Deterministic drowning protocol: call for help, avoid untrained in-water rescue."
+    },
+    "self_harm": {
+      "immediate_actions": [
+        "If you or someone else is in immediate danger, call 112 now.",
+        "Stay with the person if it is safe; remove easily accessible means of harm if you can do so safely.",
+        "Speak calmly and do not leave them alone until help arrives."
+      ],
+      "safety_warnings": [
+        "Do not challenge, dare, or argue about the wish to die.",
+        "This app is not a crisis counsellor and does not replace emergency services."
+      ],
+      "when_to_seek_help": [
+        "Any expressed plan or attempt to die is an emergency."
+      ],
+      "questions_to_ask_user": [
+        "Are you in a safe place right now?",
+        "Is someone with you who can stay until help arrives?"
+      ],
+      "explanation": "Deterministic self-harm protocol: treat as urgent and connect to 112."
+    },
+    "assault": {
+      "immediate_actions": [
+        "Get to a safer location if you can.",
+        "Call 112 immediately.",
+        "If someone is bleeding, apply firm pressure with a clean cloth once you are away from the attacker."
+      ],
+      "safety_warnings": [
+        "Do not confront an armed person.",
+        "Do not stay on the scene to gather evidence if you are still in danger."
+      ],
+      "when_to_seek_help": [
+        "Any assault with injury, a weapon, or ongoing threat requires emergency services."
+      ],
+      "questions_to_ask_user": [
+        "Are you currently safe from the attacker?",
+        "Is anyone injured?"
+      ],
+      "explanation": "Deterministic assault protocol: safety first, then emergency call."
+    }
+  }
+}

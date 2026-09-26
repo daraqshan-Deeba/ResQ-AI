@@ -1,5 +1,6 @@
 from flask import Blueprint, jsonify, request
 
+from app.auth import rate_limit, require_write_auth
 from app.services import knowledge_service
 
 bp = Blueprint("knowledge", __name__, url_prefix="/api/knowledge")
@@ -32,6 +33,8 @@ def search_knowledge():
 
 
 @bp.post("/upload")
+@require_write_auth
+@rate_limit(max_calls=10, window_sec=60)
 def upload_knowledge():
     if not knowledge_service.knowledge_available():
         return jsonify({"detail": "Knowledge upload requires Supabase"}), 503

@@ -16,6 +16,35 @@ export interface UserCoords {
   accuracy: number | null;
 }
 
+const STORAGE_KEY = "resq_last_coords";
+
+function readStoredCoords(): UserCoords | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const raw = sessionStorage.getItem(STORAGE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as Partial<UserCoords>;
+    if (typeof parsed.lat === "number" && typeof parsed.lon === "number") {
+      return {
+        lat: parsed.lat,
+        lon: parsed.lon,
+        accuracy: typeof parsed.accuracy === "number" ? parsed.accuracy : null,
+      };
+    }
+  } catch {
+    return null;
+  }
+  return null;
+}
+
+function writeStoredCoords(coords: UserCoords) {
+  try {
+    sessionStorage.setItem(STORAGE_KEY, JSON.stringify(coords));
+  } catch {
+    /* ignore quota / private mode */
+  }
+}
+
 export function useUserLocation(requestOnMount = true) {
   const [coords, setCoords] = useState<UserCoords | null>(null);
   const [status, setStatus] = useState<LocationStatus>("idle");
@@ -33,18 +62,27 @@ export function useUserLocation(requestOnMount = true) {
 
     navigator.geolocation.getCurrentPosition(
       (pos) => {
-        setCoords({
+        const next = {
           lat: pos.coords.latitude,
           lon: pos.coords.longitude,
           accuracy: pos.coords.accuracy ?? null,
-        });
+        };
+        writeStoredCoords(next);
+        setCoords(next);
         setStatus("granted");
       },
       (err) => {
+        const stored = readStoredCoords();
+        if (stored) {
+          setCoords(stored);
+          setStatus("granted");
+          setError(null);
+          return;
+        }
         setCoords(null);
         if (err.code === err.PERMISSION_DENIED) {
           setStatus("denied");
-          setError("Location access was denied. Turn it on to see weather and traffic near you.");
+          setError("Location access was denied. Turn it on to find hospitals near you.");
         } else {
           setStatus("error");
           setError("Could not find your location. Please try again.");
@@ -55,6 +93,11 @@ export function useUserLocation(requestOnMount = true) {
   }, []);
 
   useEffect(() => {
+    const stored = readStoredCoords();
+    if (stored) {
+      setCoords(stored);
+      setStatus("granted");
+    }
     if (requestOnMount) refresh();
   }, [requestOnMount, refresh]);
 

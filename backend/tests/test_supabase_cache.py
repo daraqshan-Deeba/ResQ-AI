@@ -1,6 +1,16 @@
 """Unit tests for Supabase in-process TTL cache."""
 
+from app.core.config import Settings
 from app.services import supabase_cache, supabase_service
+
+
+def test_redis_url_accepts_cli_command():
+    assert (
+        Settings._normalize_redis_url(
+            'redis-cli -u redis://default:secret@host.db.redis.io:12004'
+        )
+        == "redis://default:secret@host.db.redis.io:12004"
+    )
 
 
 def test_cache_get_set_and_ttl(monkeypatch):

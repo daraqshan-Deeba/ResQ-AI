@@ -7,9 +7,10 @@ import type { SosResponse } from "@/lib/types";
 type SosConfirmModalProps = {
   open: boolean;
   onClose: () => void;
+  situation?: string;
 };
 
-export function SosConfirmModal({ open, onClose }: SosConfirmModalProps) {
+export function SosConfirmModal({ open, onClose, situation }: SosConfirmModalProps) {
   const titleId = useId();
   const [status, setStatus] = useState("");
   const [loading, setLoading] = useState(false);
@@ -50,6 +51,7 @@ export function SosConfirmModal({ open, onClose }: SosConfirmModalProps) {
           body: JSON.stringify({
             lat: position.coords.latitude,
             lon: position.coords.longitude,
+            situation: situation || undefined,
           }),
         });
         setLoading(false);
@@ -57,7 +59,7 @@ export function SosConfirmModal({ open, onClose }: SosConfirmModalProps) {
       },
       () => {
         setLoading(false);
-        setStatus("Could not get your location. Check browser permissions.");
+        setStatus("Could not get your location. Call 112 if you are in danger.");
       },
       { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 },
     );
@@ -87,9 +89,12 @@ export function SosConfirmModal({ open, onClose }: SosConfirmModalProps) {
           Confirm SOS
         </h2>
         <p className="mt-3 text-center text-sm text-slate-400">
-          This sends an emergency alert with your current location. Your
-          location is shared only after you confirm.
+          This records an SOS with your location and can alert devices you registered
+          while signed in. It does not notify official emergency services.
         </p>
+        <a className="mt-4 block text-center text-sm font-semibold text-red-300 underline" href="tel:112">
+          Call 112 now
+        </a>
 
         <div className="mt-6 flex flex-col gap-3 sm:flex-row-reverse">
           <button

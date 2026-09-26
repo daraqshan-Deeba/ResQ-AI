@@ -210,14 +210,42 @@ def update_sos_record(event_id: str, updates: dict) -> None:
         logger.warning("update_sos_record failed for %s: %s", event_id, exc)
 
 
-def register_device(token: str) -> None:
+def register_device(token: str, *, user_id: str | None = None) -> None:
     if not firebase_available or db is None:
         logger.warning("register_device: Firebase is unavailable.")
         return
-    db.collection(DEVICES_COLLECTION).document(token).set(
-        {"token": token, "registered_at": datetime.now(timezone.utc).isoformat()}
-    )
-    messaging.subscribe_to_topic([token], settings.firebase_alert_topic)
+    payload = {"token": token, "registered_at": datetime.now(timezone.utc).isoformat()}
+    if user_id:
+        payload["user_id"] = user_id
+    db.collection(DEVICES_COLLECTION).document(token).set(payload)
+
+
+def list_device_tokens(*, user_id: str | None = None) -> list[str]:
+    if not firebase_available or db is None or not user_id:
+        return []
+    try:
+        docs = db.collection(DEVICES_COLLECTION).where("user_id", "==", user_id).stream()
+        return [doc.id for doc in docs]
+    except Exception as exc:
+        logger.warning("list_device_tokens failed: %s", exc)
+        return []
+
+
+def send_device_push(tokens: list[str], title: str, body: str, data: dict | None = None) -> str:
+    if not firebase_available:
+        raise RuntimeError("Firebase Cloud Messaging is unavailable")
+    if not tokens:
+        raise RuntimeError("No device tokens")
+    last_id = ""
+    payload = {k: str(v) for k, v in (data or {}).items()}
+    for token in tokens:
+        message = messaging.Message(
+            notification=messaging.Notification(title=title, body=body),
+            data=payload,
+            token=token,
+        )
+        last_id = messaging.send(message)
+    return last_id
 
 
 def send_topic_push(title: str, body: str, data: dict | None = None) -> str:

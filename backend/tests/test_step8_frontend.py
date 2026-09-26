@@ -16,6 +16,7 @@ from app.models.schemas import ServiceResult, WeatherSummary
 FRONTEND_DIR = Path(__file__).resolve().parents[2] / "frontend"
 ASSESSMENT_PAGE = FRONTEND_DIR / "src" / "app" / "dashboard" / "assessment" / "page.tsx"
 SOS_PAGE = FRONTEND_DIR / "src" / "app" / "dashboard" / "sos" / "page.tsx"
+SOS_MODAL = FRONTEND_DIR / "src" / "components" / "SosConfirmModal.tsx"
 API_CLIENT = FRONTEND_DIR / "src" / "lib" / "api.ts"
 
 client = app.test_client()
@@ -29,21 +30,25 @@ def read_sos_page() -> str:
     return SOS_PAGE.read_text(encoding="utf-8")
 
 
-def test_1_assessment_has_optional_location_toggle():
+def read_sos_modal() -> str:
+    return SOS_MODAL.read_text(encoding="utf-8")
+
+
+def test_1_assessment_uses_shared_location():
     page = read_assessment_page()
-    assert "includeLocation" in page
-    assert "Include GPS" in page
+    assert "useUserLocation" in page
+    assert "Share location" not in page
 
 
 def test_2_assessment_has_description_input():
     page = read_assessment_page()
-    assert "Describe what's happening" in page or "placeholder=" in page
+    assert "placeholder=" in page
 
 
 def test_3_assessment_has_submit_action():
     page = read_assessment_page()
-    assert "Get Help Now" in page
-    assert "submitAssessment" in page
+    assert "Get help" in page
+    assert "runAssessment" in page
 
 
 def test_4_assessment_has_result_state():
@@ -51,14 +56,15 @@ def test_4_assessment_has_result_state():
     assert "setResult" in page or "result" in page
 
 
-def test_5_assessment_has_emergency_presets():
+def test_5_assessment_is_voice_or_type():
     page = read_assessment_page()
-    for preset in ("flooding", "electrocution", "injury", "snakebite", "cyclone", "structural_damage", "accident"):
-        assert preset in page
+    assert "useVoiceInput" in page
+    assert "Common situations" not in page
+    assert "flooding:" not in page
 
 
 def test_6_sos_requires_explicit_confirm():
-    page = read_sos_page()
+    page = read_sos_modal()
     assert "Confirm SOS" in page
     assert "confirmSos" in page
 
@@ -70,14 +76,14 @@ def test_7_api_client_exists():
     assert "NEXT_PUBLIC_API_URL" in content
 
 
-def test_8_assessment_geolocation_not_on_mount():
+def test_8_assessment_uses_location_hook():
     page = read_assessment_page()
-    assert "navigator.geolocation" in page
-    assert "toggleLocation" in page or "getCurrentPosition" in page
+    assert "useUserLocation" in page
+    assert "toggleLocation" not in page
 
 
 def test_9_sos_geolocation_only_on_confirm():
-    page = read_sos_page()
+    page = read_sos_modal()
     assert "navigator.geolocation" in page
     assert "confirmSos" in page
 

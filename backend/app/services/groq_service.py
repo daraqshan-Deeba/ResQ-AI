@@ -48,8 +48,9 @@ NEARBY HELP:
 - <name> (<url or "no live lookup available">)
 - <name> (<url or "no live lookup available">)
 
-If you are not confident about a specific number, name, or fact, say so \
-plainly rather than inventing it.
+Note: run_assessment() is a leftover isolated helper. The production pipeline is
+emergency_orchestrator (deterministic severity + protocol). Do not wire this
+module back into /api/assessment.
 """
 
 STATIC_FALLBACK_ASSESSMENT = AssessmentResponse(
@@ -84,6 +85,7 @@ async def call_groq_safe(
     messages: list[dict],
     temperature: float = 0.3,
     response_format: Optional[dict] = None,
+    tools: Optional[list] = None,
 ) -> ServiceResult[str]:
     api_key = settings.groq_api_key
     if not api_key or not api_key.strip():
@@ -105,6 +107,9 @@ async def call_groq_safe(
     }
     if response_format:
         payload["response_format"] = response_format
+    if tools:
+        payload["tools"] = tools
+        payload["tool_choice"] = "auto"
 
     try:
         async with httpx.AsyncClient(timeout=30) as client:
@@ -239,6 +244,7 @@ def parse_response(raw_text: str) -> AssessmentResponse:
 
 
 async def run_assessment(description: str, city: str, language: str = "English") -> AssessmentResponse:
+    """Isolated legacy Groq assessment. Not used by the orchestrator or /api/assessment."""
     messages = [
         {"role": "system", "content": SYSTEM_INSTRUCTION.format(city=city, language=language)},
         {"role": "user", "content": _build_prompt(description, city)},

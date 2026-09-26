@@ -1,21 +1,24 @@
 from flask import Blueprint, jsonify, request
 
-from app.core.config import settings
-from app.models.schemas import WeatherSummary
 from app.services import weather_service
 
 bp = Blueprint("weather", __name__, url_prefix="/api/weather")
 
 
-def _coords_from_query() -> tuple[float, float]:
+def _coords_from_query() -> tuple[float, float] | None:
     lat = request.args.get("lat", type=float)
     lon = request.args.get("lon", type=float)
-    return lat or settings.default_lat, lon or settings.default_lon
+    if lat is None or lon is None:
+        return None
+    return lat, lon
 
 
 @bp.get("")
 async def get_weather():
-    lat, lon = _coords_from_query()
+    coords = _coords_from_query()
+    if coords is None:
+        return jsonify({"detail": "lat and lon are required", "status": "unavailable"}), 400
+    lat, lon = coords
     result = await weather_service.get_weather_safe(lat, lon)
     if result.available and result.data:
         return jsonify(result.data.model_dump())
@@ -27,16 +30,15 @@ async def get_weather():
 
 @bp.get("/risk")
 async def get_risk():
-    lat, lon = _coords_from_query()
+    coords = _coords_from_query()
+    if coords is None:
+        return jsonify({"detail": "lat and lon are required", "status": "unavailable"}), 400
+    lat, lon = coords
     result = await weather_service.get_weather_safe(lat, lon)
     if result.available and result.data:
         return jsonify(weather_service.compute_risk_score(result.data).model_dump())
 
-    fallback_weather = WeatherSummary(
-        temp_c=25.0,
-        condition="Unavailable (baseline fallback)",
-        rain_mm_last_hour=0.0,
-        alert_active=False,
-        alert_headline=None,
+    return (
+        jsonify({"detail": result.detail or "Weather risk is unavailable", "status": "unavailable"}),
+        503,
     )
-    return jsonify(weather_service.compute_risk_score(fallback_weather).model_dump())

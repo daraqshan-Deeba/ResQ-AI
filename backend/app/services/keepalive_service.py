@@ -103,6 +103,7 @@ def run_keepalive() -> dict[str, Any]:
         "supabase": ping_supabase(),
         "supabase_cache": warm_supabase_cache(),
         "redis_agent_memory": ping_redis(),
+        "redis_cache": supabase_cache.ping_redis_cache(),
         "firebase": ping_firebase(),
     }
     configured = [name for name, result in checks.items() if result.get("configured")]

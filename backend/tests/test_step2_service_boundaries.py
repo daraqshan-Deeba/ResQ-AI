@@ -344,23 +344,21 @@ def test_router_weather_success_and_fallback(monkeypatch):
     }
     with patch("httpx.AsyncClient.get", new_callable=AsyncMock) as mock_get:
         mock_get.return_value = make_mock_response(200, sample_weather)
-        res_w = client.get("/api/weather")
+        res_w = client.get("/api/weather?lat=17.385&lon=78.4867")
         assert res_w.status_code == 200
         assert res_w.get_json()["temp_c"] == 29.0
 
-        res_r = client.get("/api/weather/risk")
+        res_r = client.get("/api/weather/risk?lat=17.385&lon=78.4867")
         assert res_r.status_code == 200
         assert res_r.get_json()["level"] == "safe"
 
-    # Unavailable weather -> /api/weather returns 503, /api/weather/risk returns fallback baseline
+    # Unavailable weather -> /api/weather returns 503, /api/weather/risk returns 503 (no fake safe)
     monkeypatch.setattr(settings, "openweather_api_key", "")
-    res_w_fail = client.get("/api/weather")
+    res_w_fail = client.get("/api/weather?lat=17.385&lon=78.4867")
     assert res_w_fail.status_code == 503
 
-    res_r_fallback = client.get("/api/weather/risk")
-    assert res_r_fallback.status_code == 200
-    assert res_r_fallback.get_json()["score"] == 18
-    assert res_r_fallback.get_json()["level"] == "safe"
+    res_r_fallback = client.get("/api/weather/risk?lat=17.385&lon=78.4867")
+    assert res_r_fallback.status_code == 503
 
 
 def test_router_hospitals_degraded_when_maps_unavailable(monkeypatch):
@@ -368,9 +366,8 @@ def test_router_hospitals_degraded_when_maps_unavailable(monkeypatch):
 
     client = app.test_client()
     monkeypatch.setattr(database_service, "hospitals_directory_available", lambda: False)
-    res = client.get("/api/hospitals")
-    assert res.status_code == 200
-    assert res.get_json() == []
+    res = client.get("/api/hospitals?lat=17.385&lon=78.4867")
+    assert res.status_code == 503
 
 
 def test_router_assessment_fallback_when_groq_unavailable(monkeypatch):
@@ -381,7 +378,7 @@ def test_router_assessment_fallback_when_groq_unavailable(monkeypatch):
     data = res.get_json()
     assert "112" in " ".join(data["call_these_services"])
     assert "108" in " ".join(data["call_these_services"])
-    assert "Live AI assessment service is currently unavailable" in data["whats_happening"]
+    assert data["emergency_level"] in ("High", "Critical", "Unknown")
 
 
 def test_router_chat_fallback_when_groq_unavailable(monkeypatch):

@@ -1,6 +1,6 @@
 from pathlib import Path
 
-from pydantic import AliasChoices, Field
+from pydantic import AliasChoices, Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 _BACKEND_DIR = Path(__file__).resolve().parents[2]
@@ -122,6 +122,12 @@ class Settings(BaseSettings):
         ),
     )
 
+    # Redis Cloud OSS cache (hospitals / shelters / reports). URL only, not redis-cli.
+    redis_url: str = Field(
+        default="",
+        validation_alias=AliasChoices("REDIS_URL", "REDIS_CACHE", "redis_url"),
+    )
+
     # Supabase (Postgres persistence — preferred over Firestore when configured)
     supabase_url: str = Field(
         default="",
@@ -219,11 +225,41 @@ class Settings(BaseSettings):
         ),
     )
 
+    supabase_jwt_secret: str = Field(
+        default="",
+        validation_alias=AliasChoices("SUPABASE_JWT_SECRET", "supabase_jwt_secret"),
+    )
+    api_auth_required: bool = Field(
+        default=False,
+        validation_alias=AliasChoices("API_AUTH_REQUIRED", "api_auth_required"),
+    )
+    llm_evidence_tools_enabled: bool = Field(
+        default=False,
+        validation_alias=AliasChoices(
+            "LLM_EVIDENCE_TOOLS_ENABLED",
+            "llm_evidence_tools_enabled",
+        ),
+    )
+
     model_config = SettingsConfigDict(
         env_file=str(_BACKEND_ENV),
         env_file_encoding="utf-8",
         extra="ignore",
     )
+
+    @field_validator("redis_url", mode="before")
+    @classmethod
+    def _normalize_redis_url(cls, value: object) -> str:
+        raw = str(value or "").strip().strip('"').strip("'")
+        if not raw:
+            return ""
+        marker = "redis://"
+        tls = "rediss://"
+        if tls in raw:
+            return tls + raw.split(tls, 1)[1].split()[0].strip().strip('"')
+        if marker in raw:
+            return marker + raw.split(marker, 1)[1].split()[0].strip().strip('"')
+        return raw
 
     @property
     def cors_origin_list(self) -> list[str]:
@@ -244,6 +280,10 @@ class Settings(BaseSettings):
     @property
     def is_supabase_available(self) -> bool:
         return bool(self.supabase_url.strip() and self.supabase_service_role_key.strip())
+
+    @property
+    def is_redis_cache_available(self) -> bool:
+        return bool(self.redis_url.strip())
 
 
 settings = Settings()

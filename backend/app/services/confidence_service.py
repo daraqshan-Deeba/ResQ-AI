@@ -153,31 +153,36 @@ def aggregate_confidence(
     triage_confidence: float,
     weather_confidence: float,
     action_plan_confidence: float,
+    *,
+    weather_relevant: bool = True,
+    triage_state: str = "unknown",
+    weather_state: str = "not_relevant",
+    guidance_state: str = "standard_protocol",
 ) -> ConfidenceResult:
-    """Aggregate subsystem confidences into a single ConfidenceResult via weakest-link.
-
-    Formula:
-        overall_confidence = min(triage_confidence, weather_confidence, action_plan_confidence)
-
-    Raises:
-        ValueError: If any confidence score is outside [0.0, 1.0], NaN, Infinity, or None.
-        TypeError: If any confidence score is not a numeric type.
-    """
+    """Aggregate subsystem confidences into a single ConfidenceResult via weakest-link."""
     t_val = validate_confidence_score(triage_confidence, "triage_confidence")
     w_val = validate_confidence_score(weather_confidence, "weather_confidence")
     a_val = validate_confidence_score(action_plan_confidence, "action_plan_confidence")
 
-    overall = round(min(t_val, w_val, a_val), 4)
+    if weather_relevant:
+        overall = round(min(t_val, w_val, a_val), 4)
+        limiting = determine_limiting_factor(t_val, w_val, a_val)
+    else:
+        overall = round(min(t_val, a_val), 4)
+        limiting = "triage" if t_val <= a_val else "action_plan"
+
     level = determine_confidence_level(overall)
-    limiting = determine_limiting_factor(t_val, w_val, a_val)
 
     return ConfidenceResult(
         overall_confidence=overall,
         confidence_level=level,
         triage_confidence=t_val,
-        weather_confidence=w_val,
+        weather_confidence=w_val if weather_relevant else 1.0,
         action_plan_confidence=a_val,
         limiting_factor=limiting,
+        triage_state=triage_state,
+        weather_state=weather_state if weather_relevant else "not_relevant",
+        guidance_state=guidance_state,
     )
 
 
@@ -185,16 +190,15 @@ def aggregate_confidence_safe(
     triage_confidence: Any,
     weather_confidence: Any,
     action_plan_confidence: Any,
+    **kwargs: Any,
 ) -> ConfidenceResult:
-    """Safe wrapper for confidence aggregation that returns a degraded fallback rather than raising.
-
-    Used when inputs originate from unvalidated or external sources.
-    """
+    """Safe wrapper for confidence aggregation that returns a degraded fallback rather than raising."""
     try:
         return aggregate_confidence(
             triage_confidence=triage_confidence,
             weather_confidence=weather_confidence,
             action_plan_confidence=action_plan_confidence,
+            **kwargs,
         )
     except (ValueError, TypeError, Exception) as exc:
         logger.warning("aggregate_confidence_safe: Input validation failed (%s). Returning degraded.", exc)

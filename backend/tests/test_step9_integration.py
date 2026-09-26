@@ -153,7 +153,7 @@ def test_scenario_b_groq_unavailable():
 
     assert data["triage"]["category"] == "snakebite"
     assert data["emergency_level"] == "Critical"  # deterministic rule for snakebite
-    assert data["service_status"]["groq"] in ("disabled", "fallback_used")
+    assert data["service_status"]["groq"] in ("disabled", "fallback_used", "not_needed")
     # Action plan still provided by deterministic fallback
     assert len(data["action_plan"]["immediate_actions"]) > 0
     # Deterministic action plan provenance leads to 1.0 confidence provenance in confidence result
@@ -174,7 +174,7 @@ def test_scenario_c_weather_unavailable():
         mock_m.return_value = _mock_hospitals_available()
 
         res = client.post("/api/assessment", json={
-            "description": "Someone has a deep cut and is bleeding badly, needs medical help.",
+            "description": "Water is entering my house and rising quickly.",
             "lat": 17.3850,
             "lon": 78.4867,
         })
@@ -258,6 +258,11 @@ def test_scenario_f_fcm_failure_after_persistence(monkeypatch):
     monkeypatch.setattr(firebase_service, "firebase_available", True)
     monkeypatch.setattr(firebase_service, "db", db)
     monkeypatch.setattr(firebase_service, "messaging", mock_messaging)
+    monkeypatch.setattr("app.services.database_service.list_device_tokens", lambda user_id=None: ["tok"])
+    monkeypatch.setattr(
+        "app.services.database_service.send_device_push",
+        MagicMock(side_effect=RuntimeError("FCM server connection timeout")),
+    )
 
     res = client.post("/api/sos", json={
         "lat": 17.3850,
@@ -294,6 +299,8 @@ def test_scenario_g_successful_sos(monkeypatch):
     monkeypatch.setattr(firebase_service, "firebase_available", True)
     monkeypatch.setattr(firebase_service, "db", db)
     monkeypatch.setattr(firebase_service, "messaging", mock_messaging)
+    monkeypatch.setattr("app.services.database_service.list_device_tokens", lambda user_id=None: ["tok"])
+    monkeypatch.setattr("app.services.database_service.send_device_push", lambda *a, **k: "projects/p/messages/msg-888")
 
     res = client.post("/api/sos", json={
         "lat": 17.3850,

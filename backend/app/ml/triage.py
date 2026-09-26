@@ -30,13 +30,25 @@ def _normalize(text: str) -> str:
 
 def load_training_rows() -> list[tuple[str, str]]:
     rows: list[tuple[str, str]] = []
+    gold_texts: set[str] = set()
+    gold_path = Path(__file__).resolve().parents[2] / "data" / "triage_eval_gold.json"
+    if gold_path.exists():
+        try:
+            gold = json.loads(gold_path.read_text(encoding="utf-8"))
+            for item in gold.get("cases", gold if isinstance(gold, list) else []):
+                if isinstance(item, dict):
+                    text = (item.get("text") or "").strip()
+                    if text:
+                        gold_texts.add(_normalize(text))
+        except Exception as exc:
+            logger.warning("Could not load gold holdout texts: %s", exc)
 
     if TRIAGE_TRAINING_JSON.exists():
         payload = json.loads(TRIAGE_TRAINING_JSON.read_text(encoding="utf-8"))
         for item in payload.get("examples", []):
             text = (item.get("text") or "").strip()
             category = (item.get("category") or "").strip()
-            if text and category:
+            if text and category and _normalize(text) not in gold_texts:
                 rows.append((text, category))
                 if item.get("language") in {"hi", "te"}:
                     rows.append((text, category))
@@ -151,16 +163,7 @@ def classify_triage(norm_text: str) -> Optional[TriageResult]:
     margin = prediction.margin
 
     if best_cat == "unclassified":
-        return TriageResult(
-            category="unclassified",
-            confidence=_ML_UNCLASSIFIED_CONFIDENCE,
-            tier=2,
-            matched_rule_or_example="ml_classifier:unclassified",
-            explanation=(
-                f"Multilingual ML classifier rejected emergency match "
-                f"(probability: {best_score:.2f}, script: {language_hint})."
-            ),
-        )
+        return None
 
     confidence = (
         _ML_HIGH_CONFIDENCE

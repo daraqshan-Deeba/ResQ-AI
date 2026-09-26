@@ -76,16 +76,42 @@ def update_sos_record(event_id: str, updates: dict) -> None:
     firebase_service.update_sos_record(event_id, updates)
 
 
-def register_device(token: str) -> None:
+def register_device(token: str, *, user_id: str | None = None) -> None:
     if supabase_service.supabase_available:
-        supabase_service.register_device(token)
+        supabase_service.register_device(token, user_id=user_id)
     if firebase_service.firebase_available:
-        firebase_service.register_device(token)
+        firebase_service.register_device(token, user_id=user_id)
     elif not supabase_service.supabase_available:
-        firebase_service.register_device(token)  # emits degraded-mode warning
+        firebase_service.register_device(token, user_id=user_id)
+
+
+def list_device_tokens(*, user_id: str | None = None) -> list[str]:
+    tokens: list[str] = []
+    if supabase_service.supabase_available:
+        tokens.extend(supabase_service.list_device_tokens(user_id=user_id))
+    if firebase_service.firebase_available:
+        tokens.extend(firebase_service.list_device_tokens(user_id=user_id))
+    # de-dupe while preserving order
+    seen: set[str] = set()
+    unique: list[str] = []
+    for token in tokens:
+        if token not in seen:
+            seen.add(token)
+            unique.append(token)
+    return unique
+
+
+def send_device_push(
+    tokens: list[str],
+    title: str,
+    body: str,
+    data: dict | None = None,
+) -> str:
+    return firebase_service.send_device_push(tokens, title, body, data)
 
 
 def send_topic_push(title: str, body: str, data: dict | None = None) -> str:
+    """Deprecated: public topic must not be used for SOS."""
     return firebase_service.send_topic_push(title, body, data)
 
 

@@ -1,6 +1,7 @@
 from flask import Blueprint, jsonify, request
 from pydantic import ValidationError
 
+from app.auth import current_user_id, rate_limit, require_write_auth
 from app.http_utils import parse_json, validation_error_response
 from app.models.schemas import ReportIn
 from app.services import database_service, knowledge_service, supabase_storage_service
@@ -14,6 +15,8 @@ def list_reports():
 
 
 @bp.post("")
+@require_write_auth
+@rate_limit(max_calls=30, window_sec=60)
 def create_report():
     upload = request.files.get("file")
     if upload is not None:

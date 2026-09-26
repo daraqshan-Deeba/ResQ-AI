@@ -101,6 +101,7 @@ export interface SosResponse {
   notification_status: string;
   maps_link: string;
   message: string;
+  emergency_contact_phone?: string | null;
 }
 
 export interface CommunityInsight {
@@ -126,11 +127,20 @@ export interface AssessmentResult {
     questions_to_ask_user?: string[];
     emergency_contacts?: string[];
   };
-  weather?: { level?: string; score?: number; condition?: string; temp_c?: number };
+  weather?: {
+    level?: string | null;
+    score?: number | null;
+    condition?: string | null;
+    temp_c?: number | null;
+    status?: string;
+  };
   confidence?: {
     confidence_level?: string;
     overall_confidence?: number;
     limiting_factor?: string;
+    triage_state?: string;
+    weather_state?: string;
+    guidance_state?: string;
   };
   hospitals?: Hospital[];
   immediate_first_aid?: string[];

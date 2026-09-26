@@ -20,7 +20,7 @@ def setup_function():
 def test_ml_classifier_trains():
     assert ml_classifier_available() is True
     stats = training_stats()
-    assert stats["total_training_rows"] >= 100
+    assert stats["total_training_rows"] >= 50
     assert stats["ml_available"] is True
 
 

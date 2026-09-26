@@ -4,6 +4,22 @@ from app.main import app
 
 
 @pytest.fixture(autouse=True)
+def disable_redis_cache_for_tests(monkeypatch):
+    """Unit tests use in-process cache, not Redis Cloud."""
+    monkeypatch.setattr("app.core.config.settings.redis_url", "")
+    from app.services.supabase_cache import reset_clients
+
+    reset_clients()
+
+
+@pytest.fixture(autouse=True)
+def reset_api_rate_limits():
+    from app.auth import reset_rate_limit_buckets
+
+    reset_rate_limit_buckets()
+
+
+@pytest.fixture(autouse=True)
 def disable_supabase_for_tests(monkeypatch):
     """Keep unit tests on Firebase mocks unless explicitly testing Supabase."""
     monkeypatch.setattr("app.services.supabase_service.supabase_available", False)

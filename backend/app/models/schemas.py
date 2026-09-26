@@ -45,6 +45,8 @@ class TriageResult(BaseModel):
     Never determines severity — that is the exclusive domain of the
     deterministic weather/risk score (Principle 2).
     """
+    model_config = ConfigDict(extra="ignore")
+
     category: EmergencyCategory
     confidence: float = Field(..., ge=0.0, le=1.0, description="0.0–1.0")
     tier: TriageTier = Field(..., description="1=keyword, 2=embedding, 3=LLM fallback")
@@ -53,6 +55,8 @@ class TriageResult(BaseModel):
         description="Human-readable label of the matched keyword/phrase or example sentence.",
     )
     explanation: str = Field(..., description="Why this category was chosen (deterministic for Tiers 1–2).")
+    candidate_categories: list[str] = Field(default_factory=list)
+    safety_hits: list[str] = Field(default_factory=list)
 
 
 # ---------- Structured Action Planning (Step 5) ----------
@@ -134,6 +138,15 @@ class ConfidenceResult(BaseModel):
     weather_confidence: float = Field(..., ge=0.0, le=1.0, description="Confidence of weather signal availability")
     action_plan_confidence: float = Field(..., ge=0.0, le=1.0, description="Confidence in action-plan provenance (deterministic=1.0, groq=0.35)")
     limiting_factor: str = Field(..., description="Subsystem responsible for capping overall confidence")
+    triage_state: str = Field(default="unknown", description="rule_match | similar_example | ai_suggestion | unknown")
+    weather_state: str = Field(
+        default="not_relevant",
+        description="live | unavailable | not_relevant | not_requested",
+    )
+    guidance_state: str = Field(
+        default="standard_protocol",
+        description="standard_protocol | protocol_plus_ai",
+    )
 
 
 # ---------- Audio transcription ----------
@@ -155,7 +168,7 @@ class AssessmentRequest(BaseModel):
 
 
 class AssessmentResponse(BaseModel):
-    emergency_level: str          # e.g. "Critical" | "High" | "Moderate" | "Low"
+    emergency_level: str          # e.g. "Critical" | "High" | "Moderate" | "Low" | "Unknown"
     whats_happening: str
     immediate_first_aid: list[str]
     what_not_to_do: list[str]
@@ -286,9 +299,10 @@ SosNotificationStatus = Literal[
 
 
 class SosRequest(BaseModel):
-    lat: float
-    lon: float
+    lat: float = Field(..., ge=-90, le=90)
+    lon: float = Field(..., ge=-180, le=180)
     situation: str | None = None
+    idempotency_key: str | None = None
 
 
 class SosEventRecord(BaseModel):
@@ -313,6 +327,7 @@ class SosResponse(BaseModel):
     ]
     maps_link: str
     message: str
+    emergency_contact_phone: Optional[str] = None
 
 
 # ---------- Community context (Section 9.2 — orchestrator integration) ----------
@@ -351,6 +366,8 @@ class AssessmentResult(BaseModel):
     service_status: dict[str, str] = Field(default_factory=dict)
     community_insights: list[CommunityInsight] = Field(default_factory=list)
     source_labels: dict[str, str] = Field(default_factory=dict)
+    safety_hits: list[str] = Field(default_factory=list)
+    protocol_key: str = "unclassified"
 
     # Backward-Compatible Legacy Fields
     emergency_level: str = "Moderate"

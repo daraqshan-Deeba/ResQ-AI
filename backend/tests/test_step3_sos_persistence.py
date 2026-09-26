@@ -18,9 +18,15 @@ Test inventory (10 tests):
 """
 
 import pytest
+import pytest
 from unittest.mock import MagicMock, patch
 from app.main import app
 from app.services import firebase_service
+
+
+@pytest.fixture(autouse=True)
+def _disable_supabase_for_sos_tests(monkeypatch):
+    monkeypatch.setattr("app.services.supabase_service.supabase_available", False)
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -34,6 +40,23 @@ def _make_firestore_mock(event_id: str = "evt-test-001"):
     db = MagicMock()
     db.collection.return_value.document.return_value = ref
     return db, ref
+
+
+def _enable_private_push(monkeypatch, *, send_ok: bool = True):
+    from app.services import database_service
+
+    monkeypatch.setattr(database_service, "list_device_tokens", lambda user_id=None: ["tok-1"])
+    if send_ok:
+        monkeypatch.setattr(
+            database_service,
+            "send_device_push",
+            lambda *args, **kwargs: "projects/p/messages/abc123",
+        )
+    else:
+        def _fail(*args, **kwargs):
+            raise RuntimeError("FCM connection refused")
+
+        monkeypatch.setattr(database_service, "send_device_push", _fail)
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -50,6 +73,7 @@ def test_t1_firestore_ok_fcm_ok(monkeypatch):
         Message=MagicMock(),
         Notification=MagicMock(),
     ))
+    _enable_private_push(monkeypatch, send_ok=True)
 
     client = app.test_client()
     res = client.post("/api/sos", json={"lat": 17.385, "lon": 78.4867, "situation": "Flooding"})
@@ -86,6 +110,7 @@ def test_t2_firestore_ok_fcm_fails(monkeypatch):
     monkeypatch.setattr(firebase_service, "firebase_available", True)
     monkeypatch.setattr(firebase_service, "db", db)
     monkeypatch.setattr(firebase_service, "messaging", mock_messaging)
+    _enable_private_push(monkeypatch, send_ok=False)
 
     client = app.test_client()
     res = client.post("/api/sos", json={"lat": 17.385, "lon": 78.4867})
@@ -199,6 +224,7 @@ def test_t6_update_raises_after_fcm_failure(monkeypatch):
     monkeypatch.setattr(firebase_service, "firebase_available", True)
     monkeypatch.setattr(firebase_service, "db", db)
     monkeypatch.setattr(firebase_service, "messaging", mock_messaging)
+    _enable_private_push(monkeypatch, send_ok=False)
 
     client = app.test_client()
     res = client.post("/api/sos", json={"lat": 17.385, "lon": 78.4867})

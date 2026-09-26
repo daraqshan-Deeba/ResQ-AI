@@ -22,6 +22,7 @@ if __name__ == "__main__":
         firebase_service.firebase_available,
         f" ({firebase_service.firebase_error_detail})" if firebase_service.firebase_error_detail else "",
     )
+    logger.info("Redis cache configured: %s", settings.is_redis_cache_available)
     # Default 8001: port 8000 is often left occupied by stale Flask processes on Windows.
     port = int(os.environ.get("PORT", "8001"))
     try:

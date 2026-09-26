@@ -244,6 +244,17 @@ def register_device(token: str, *, user_id: str | None = None) -> None:
         logger.warning("register_device failed: %s", exc)
 
 
+def list_device_tokens(*, user_id: str | None = None) -> list[str]:
+    if not supabase_available or not user_id:
+        return []
+    try:
+        response = _table("device_tokens").select("token").eq("user_id", user_id).execute()
+        return [row["token"] for row in (response.data or []) if row.get("token")]
+    except Exception as exc:
+        logger.warning("list_device_tokens failed: %s", exc)
+        return []
+
+
 _HOSPITAL_COLUMNS = frozenset(
     {
         "name",

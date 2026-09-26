@@ -23,19 +23,15 @@ from __future__ import annotations
 
 import logging
 import math
-from datetime import datetime, timezone
 from typing import Any, Optional
 
 from app.core.config import settings
 from app.models.schemas import (
-    ActionPlan,
     ActionPlanContext,
     AssessmentResult,
     CommunityInsight,
     ConfidenceResult,
-    EmergencyCategory,
     HospitalOut,
-    RiskScore,
     ServiceResult,
     SosResponse,
     TriageResult,
@@ -51,10 +47,12 @@ from app.services import (
     weather_service,
 )
 from app.services.action_planner_service import DEFAULT_TRUSTED_CONTACTS
+from app.services.evidence_map import required_evidence, weather_relevant as weather_is_relevant
+from app.services.protocol_service import protocol_key_for
+from app.services.safety_net import detect_life_threats
+from app.services.severity import determine_emergency_level
 
 logger = logging.getLogger("resq.orchestrator")
-
-_NOW_ISO = lambda: datetime.now(timezone.utc).isoformat()  # noqa: E731
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -100,30 +98,12 @@ def validate_assessment_request(
         raise ValueError("Coordinates (latitude and longitude) are required when requesting SOS.")
 
 
-# ─────────────────────────────────────────────────────────────────────────────
-# Deterministic Emergency Level Decision (Stage 8)
-# ─────────────────────────────────────────────────────────────────────────────
-
-def determine_emergency_level(
-    category: EmergencyCategory,
-    risk_level: Optional[str] = None,
-) -> str:
-    """Deterministically derive emergency level without LLM involvement.
-
-    Rules:
-      - Critical: Life-threatening hazards (electrocution, snakebite) OR critical weather risk
-      - High: Structural collapse, severe flood, cyclone, OR warning weather risk
-      - Moderate: Injury, vehicular accident, watch weather risk
-      - Low: Baseline/safe conditions or unclassified situations
-    """
-    if category in ("electrocution", "snakebite") or risk_level == "critical":
-        return "Critical"
-    elif category in ("structural_damage", "flooding", "cyclone") or risk_level == "warning":
-        return "High"
-    elif category in ("injury", "accident") or risk_level == "watch":
-        return "Moderate"
-    else:
-        return "Moderate" if category != "unclassified" else "Low"
+# Re-exported for tests
+__all__ = [
+    "validate_assessment_request",
+    "determine_emergency_level",
+    "orchestrate_emergency_assessment",
+]
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -253,9 +233,13 @@ async def orchestrate_emergency_assessment(
     validate_assessment_request(description, lat=lat, lon=lon, request_sos=request_sos)
     effective_city = city or settings.default_city
 
-    # ── Stage 2: Authoritative Triage Classification ──────────────────────────
+    # ── Stage 2: Authoritative Triage + safety net ────────────────────────────
+    safety = detect_life_threats(description)
     try:
-        triage_res: TriageResult = await triage_service.classify(description)
+        triage_res: TriageResult = await triage_service.classify(
+            description,
+            skip_llm=bool(safety.hits),
+        )
     except Exception as exc:
         logger.error("orchestrator: Triage classification failed unexpectedly: %s", exc)
         triage_res = TriageResult(
@@ -263,76 +247,106 @@ async def orchestrate_emergency_assessment(
             confidence=0.20,
             tier=3,
             matched_rule_or_example=None,
-            explanation="Triage failed unexpectedly; degraded to safe unclassified baseline.",
+            explanation="Triage failed unexpectedly; treated as unknown, not safe.",
         )
+    triage_res.safety_hits = list(safety.hits)
+    protocol_key = protocol_key_for(triage_res.category, safety.protocol_key)
+    evidence_needed = required_evidence(triage_res.category, protocol_key)
+    need_weather = weather_is_relevant(triage_res.category, protocol_key)
+    has_location = lat is not None and lon is not None
 
-    # ── Stage 3: Deterministic Weather Risk Assessment ─────────────────────────
-    # Use client coordinates if supplied; otherwise fall back to city coordinates
-    w_lat = lat if lat is not None else 17.3850
-    w_lon = lon if lon is not None else 78.4867
-
-    try:
-        weather_res: ServiceResult[WeatherSummary] = await weather_service.get_weather_safe(w_lat, w_lon)
-    except Exception as exc:
-        logger.warning("orchestrator: get_weather_safe raised %s. Using unavailable.", exc)
-        weather_res = ServiceResult(available=False, error_type="server_error")
-
-    if weather_res.available and weather_res.data:
-        risk = weather_service.compute_risk_score(weather_res.data)
-        weather_dict = {
-            "score": risk.score,
-            "level": risk.level,
-            "condition": weather_res.data.condition,
-            "temp_c": weather_res.data.temp_c,
-            "rain_mm_last_hour": weather_res.data.rain_mm_last_hour,
-            "status": "available",
-        }
-        weather_status = "available"
+    # ── Stage 3: Weather only when relevant AND location is known ─────────────
+    weather_dict: dict | None
+    weather_res: ServiceResult[WeatherSummary]
+    if not need_weather:
+        weather_status = "not_relevant"
+        weather_dict = {"status": "not_relevant", "score": None, "level": None, "condition": None, "temp_c": None}
+        weather_res = ServiceResult(available=False, error_type="service_disabled")
+    elif not has_location:
+        weather_status = "not_requested"
+        weather_dict = {"status": "not_requested", "score": None, "level": None, "condition": None, "temp_c": None}
+        weather_res = ServiceResult(available=False, error_type="service_disabled")
     else:
-        weather_dict = {
-            "score": 18,
-            "level": "safe",
-            "condition": "Unavailable (baseline fallback)",
-            "temp_c": 25.0,
-            "rain_mm_last_hour": 0.0,
-            "status": weather_res.error_type or "unavailable",
-        }
-        weather_status = weather_res.error_type or "unavailable"
+        try:
+            weather_res = await weather_service.get_weather_safe(lat, lon)
+        except Exception as exc:
+            logger.warning("orchestrator: get_weather_safe raised %s. Using unavailable.", exc)
+            weather_res = ServiceResult(available=False, error_type="server_error")
 
-    # ── Stage 4: Advisory Action Planning ─────────────────────────────────────
+        if weather_res.available and weather_res.data:
+            risk = weather_service.compute_risk_score(weather_res.data)
+            weather_dict = {
+                "score": risk.score,
+                "level": risk.level,
+                "condition": weather_res.data.condition,
+                "temp_c": weather_res.data.temp_c,
+                "rain_mm_last_hour": weather_res.data.rain_mm_last_hour,
+                "status": "available",
+            }
+            weather_status = "available"
+        else:
+            weather_status = weather_res.error_type or "unavailable"
+            weather_dict = {
+                "score": None,
+                "level": None,
+                "condition": None,
+                "temp_c": None,
+                "rain_mm_last_hour": None,
+                "status": weather_status,
+            }
+
+    # ── Stage 4: Protocol-first action planning ───────────────────────────────
+    action_weather = weather_dict if weather_status == "available" else None
     action_context = ActionPlanContext(
         user_description=description,
         triage_category=triage_res.category,
-        weather_risk=weather_dict,
+        weather_risk=action_weather,
         location_context={"city": effective_city, "lat": lat, "lon": lon},
         available_services={
-            "weather": weather_res.available,
+            "weather": weather_status == "available",
             "maps": database_service.hospitals_directory_available(),
             "groq": settings.is_groq_available,
         },
         trusted_contacts=DEFAULT_TRUSTED_CONTACTS,
     )
 
-    action_plan, action_plan_source = await action_planner_service.generate_action_plan_with_provenance(action_context)
-    if action_plan_source == "groq":
-        groq_status = "available"
-    elif not settings.is_groq_available:
-        groq_status = "disabled"
-    else:
-        groq_status = "fallback_used"
+    skip_llm = bool(safety.hits) or triage_res.tier == 1
+    action_plan, action_plan_source, groq_status = await action_planner_service.generate_action_plan_with_provenance(
+        action_context,
+        protocol_key=protocol_key,
+        skip_llm=skip_llm,
+    )
 
-    # ── Stage 5: Weakest-Link Confidence Aggregation ───────────────────────────
-    w_conf = confidence_service.calculate_weather_confidence(weather_res)
-    a_conf = confidence_service.calculate_action_plan_confidence(action_plan_source)
+    # ── Stage 5: Confidence (relevant components only) ────────────────────────
+    w_conf = (
+        1.0
+        if weather_status in {"not_relevant", "not_requested"}
+        else confidence_service.calculate_weather_confidence(weather_res)
+    )
+    a_conf = confidence_service.calculate_action_plan_confidence("deterministic")
+    triage_state = {1: "rule_match", 2: "similar_example", 3: "ai_suggestion"}.get(triage_res.tier, "unknown")
+    weather_state = {
+        "available": "live",
+        "not_relevant": "not_relevant",
+        "not_requested": "not_requested",
+    }.get(weather_status, "unavailable")
     confidence_res: ConfidenceResult = confidence_service.aggregate_confidence_safe(
         triage_confidence=triage_res.confidence,
         weather_confidence=w_conf,
         action_plan_confidence=a_conf,
+        weather_relevant=need_weather and has_location,
+        triage_state=triage_state,
+        weather_state=weather_state,
+        guidance_state="standard_protocol",
     )
 
-    # ── Stage 6: Optional Hospital Lookup (Explicit Location Only) ────────────
+    # ── Stage 6: Hospitals when required and location present ─────────────────
     hospitals: list[HospitalOut] = []
-    if lat is not None and lon is not None:
+    if "hospitals" not in evidence_needed:
+        maps_status = "not_relevant"
+    elif not has_location:
+        maps_status = "not_requested"
+    else:
         try:
             maps_res = await maps_service.get_nearby_hospitals_safe(lat, lon)
             if maps_res.available and maps_res.data:
@@ -340,92 +354,37 @@ async def orchestrate_emergency_assessment(
                 maps_status = "available"
             else:
                 hospitals = []
-                maps_status = maps_res.error_type or "unavailable"
+                maps_status = maps_res.error_type or "search_failed"
         except Exception as exc:
-            logger.warning("orchestrator: Hospital search raised %s; returning empty list.", exc)
+            logger.warning("orchestrator: Hospital search raised %s.", exc)
             hospitals = []
-            maps_status = "server_error"
-    else:
-        maps_status = "not_requested"
+            maps_status = "search_failed"
 
-    # ── Stage 7: Optional Explicit SOS Execution (Step 3 Flow) ────────────────
+    # ── Stage 7: Optional Explicit SOS ────────────────────────────────────────
     sos_res: Optional[SosResponse] = None
     if request_sos and lat is not None and lon is not None:
-        maps_link = f"https://maps.google.com/?q={lat},{lon}"
-        now = _NOW_ISO()
-        initial_data = {
-            "latitude": lat,
-            "longitude": lon,
-            "situation": situation or description,
-            "created_at": now,
-            "updated_at": now,
-            "notification_status": "pending_notification",
-            "message_id": None,
-            "error_detail": None,
-        }
+        from app.services.sos_dispatch import dispatch_sos
 
-        try:
-            event_id = database_service.create_sos_record(initial_data)
+        sos_res = dispatch_sos(
+            lat=lat,
+            lon=lon,
+            situation=situation or description,
+        )
 
-            if not database_service.push_available():
-                database_service.update_sos_record(
-                    event_id,
-                    {"notification_status": "notification_disabled", "updated_at": _NOW_ISO()},
-                )
-                sos_res = SosResponse(
-                    event_id=event_id,
-                    status="recorded",
-                    notification_status="notification_disabled",
-                    maps_link=maps_link,
-                    message=f"✅ SOS recorded. Push notifications disabled — call 112. Location: {maps_link}",
-                )
-            else:
-                notify_body = situation or description[:100]
-                try:
-                    message_id = database_service.send_topic_push(
-                        title="🚨 ResQ AI — SOS Alert",
-                        body=notify_body,
-                        data={"lat": str(lat), "lon": str(lon), "maps_link": maps_link, "event_id": event_id},
-                    )
-                    database_service.update_sos_record(
-                        event_id,
-                        {"notification_status": "notification_accepted", "message_id": message_id, "updated_at": _NOW_ISO()},
-                    )
-                    sos_res = SosResponse(
-                        event_id=event_id,
-                        status="recorded",
-                        notification_status="notification_accepted",
-                        maps_link=maps_link,
-                        message=f"✅ SOS recorded and alert sent to responders. Your location: {maps_link}",
-                    )
-                except Exception as exc:
-                    safe_detail = f"{type(exc).__name__}: notification delivery failed"
-                    database_service.update_sos_record(
-                        event_id,
-                        {"notification_status": "notification_failed", "error_detail": safe_detail, "updated_at": _NOW_ISO()},
-                    )
-                    sos_res = SosResponse(
-                        event_id=event_id,
-                        status="recorded",
-                        notification_status="notification_failed",
-                        maps_link=maps_link,
-                        message=f"✅ SOS recorded, but notification failed. Call 112. Location: {maps_link}",
-                    )
-        except Exception:
-            sos_res = SosResponse(
-                event_id=None,
-                status="degraded",
-                notification_status="notification_disabled",
-                maps_link=maps_link,
-                message="⚠️ Emergency services could not be reached. Call 112 immediately. SOS not recorded.",
-            )
-
-    # ── Stage 7b: Community Context (Section 9.2) ────────────────────────────
-    community_insights = _fetch_community_insights(description, effective_city)
+    # ── Stage 7b: Community Context ───────────────────────────────────────────
+    community_insights: list[CommunityInsight] = []
+    if "reports" in evidence_needed:
+        community_insights = _fetch_community_insights(description, effective_city)
     community_status = "available" if community_insights else "none"
 
     # ── Stage 8: Result Assembly ───────────────────────────────────────────────
-    emergency_level = determine_emergency_level(triage_res.category, weather_dict.get("level"))
+    emergency_level = determine_emergency_level(
+        triage_res.category,
+        weather_dict.get("level") if isinstance(weather_dict.get("level"), str) else None,
+        candidate_categories=triage_res.candidate_categories,
+        safety_forced_level=safety.forced_level,
+        weather_relevant=need_weather and weather_status == "available",
+    )
     database_status = "available" if database_service.database_available() else "unavailable"
     push_status = "available" if database_service.push_available() else "unavailable"
 
@@ -444,14 +403,22 @@ async def orchestrate_emergency_assessment(
         maps_status,
         len(community_insights),
     )
+    try:
+        from app.services.evidence_tools import maybe_run_llm_evidence_tools
 
-    # Format whats_happening for backward compatibility with existing tests/clients
-    if action_plan_source == "groq":
-        whats_happening = action_plan.explanation
-    else:
-        whats_happening = f"Live AI assessment service is currently unavailable. {action_plan.explanation}"
+        tool_trace = await maybe_run_llm_evidence_tools(description)
+        if tool_trace:
+            source_labels["evidence_tools"] = "llm_evidence_only"
+    except Exception as exc:
+        logger.warning("orchestrator: optional evidence tools skipped: %s", exc)
 
-    # Build backward-compatible nearby_help representation
+    whats_happening = action_plan.explanation
+    if emergency_level == "Unknown":
+        whats_happening = (
+            "This situation is not classified as a known hazard type. "
+            "Treat it as urgent: call 112 or 108 now. " + whats_happening
+        )
+
     nearby_help = [
         {
             "name": h.name,
@@ -477,6 +444,8 @@ async def orchestrate_emergency_assessment(
         service_status=service_status,
         community_insights=community_insights,
         source_labels=source_labels,
+        safety_hits=list(safety.hits),
+        protocol_key=protocol_key,
         emergency_level=emergency_level,
         whats_happening=whats_happening,
         immediate_first_aid=action_plan.immediate_actions,

@@ -46,9 +46,14 @@ const LEVEL_STYLES: Record<string, { badge: string; ring: string; glow: string }
     glow: "from-amber-600/15 via-amber-500/5 to-transparent",
   },
   low: {
-    badge: "badge safe",
-    ring: "border-emerald-500/40",
-    glow: "from-emerald-600/15 via-emerald-500/5 to-transparent",
+    badge: "badge watch",
+    ring: "border-amber-500/40",
+    glow: "from-amber-600/15 via-amber-500/5 to-transparent",
+  },
+  unknown: {
+    badge: "badge warning",
+    ring: "border-orange-500/40",
+    glow: "from-orange-600/20 via-orange-500/5 to-transparent",
   },
 };
 
@@ -59,12 +64,6 @@ function formatSource(key: string, value: string) {
 
 function levelKey(level: string) {
   return level.trim().toLowerCase();
-}
-
-function confidenceTone(level?: string) {
-  if (level === "high") return "text-emerald-300";
-  if (level === "medium") return "text-amber-300";
-  return "text-red-300";
 }
 
 function SectionCard({
@@ -111,7 +110,13 @@ function ActionList({ items, marker }: { items: string[]; marker: string }) {
   );
 }
 
-export function AssessmentResultPanel({ result }: { result: AssessmentResult }) {
+export function AssessmentResultPanel({
+  result,
+  onRequestSos,
+}: {
+  result: AssessmentResult;
+  onRequestSos?: () => void;
+}) {
   const plan = result.action_plan;
   const level = levelKey(result.emergency_level);
   const levelStyle = LEVEL_STYLES[level] ?? LEVEL_STYLES.moderate;
@@ -132,10 +137,22 @@ export function AssessmentResultPanel({ result }: { result: AssessmentResult }) 
       key !== "community" &&
       status !== "available" &&
       status !== "not_requested" &&
+      status !== "not_relevant" &&
+      status !== "not_needed" &&
       status !== "none",
   );
 
-  const confidencePct = Math.round((result.confidence?.overall_confidence ?? 0) * 100);
+  const showCallNow = ["unknown", "critical", "high"].includes(level);
+  const weatherNotRelevant =
+    result.weather?.status === "not_relevant" || result.service_status?.weather === "not_relevant";
+  const weatherMissing =
+    !weatherNotRelevant &&
+    (!result.weather ||
+      result.weather.status === "unavailable" ||
+      result.weather.status === "not_requested" ||
+      result.weather.score == null);
+  const hospitalSearchFailed = (result.service_status?.maps ?? "").includes("fail") ||
+    result.service_status?.maps === "server_error";
 
   return (
     <div className="space-y-5">
@@ -161,6 +178,19 @@ export function AssessmentResultPanel({ result }: { result: AssessmentResult }) 
         <div className="relative flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
           <div className="min-w-0 flex-1">
             <p className="mono-tag mb-2">Your result</p>
+            {showCallNow && (
+              <div className="mb-3 flex flex-wrap gap-2">
+                <a className="btn btn-danger text-sm" href="tel:112">Call 112</a>
+                <a className="btn border border-white/20 bg-white/10 text-sm" href="tel:108">
+                  Call 108
+                </a>
+                {onRequestSos && (
+                  <button type="button" className="btn btn-danger text-sm" onClick={onRequestSos}>
+                    Send SOS
+                  </button>
+                )}
+              </div>
+            )}
             <div className="flex flex-wrap items-center gap-2">
               <span className={levelStyle.badge}>{result.emergency_level}</span>
               {result.triage?.category && (
@@ -178,23 +208,20 @@ export function AssessmentResultPanel({ result }: { result: AssessmentResult }) 
           </div>
 
           <div className="w-full shrink-0 rounded-2xl border border-white/10 bg-black/20 p-4 sm:w-56">
-            <div className="mono-tag mb-2">Confidence</div>
-            <div className={`text-3xl font-semibold ${confidenceTone(result.confidence?.confidence_level)}`}>
-              {confidencePct}%
+            <div className="mono-tag mb-2">Reliability</div>
+            <div className="flex flex-wrap gap-2 text-xs text-slate-300">
+              <span className="rounded-full border border-white/15 bg-white/5 px-2.5 py-1">
+                Type: {(result.confidence?.triage_state ?? "unknown").replaceAll("_", " ")}
+              </span>
+              <span className="rounded-full border border-white/15 bg-white/5 px-2.5 py-1">
+                Situation: {(result.confidence?.weather_state ?? "unknown").replaceAll("_", " ")}
+              </span>
+              <span className="rounded-full border border-white/15 bg-white/5 px-2.5 py-1">
+                Guidance: {(result.confidence?.guidance_state ?? "standard_protocol").replaceAll("_", " ")}
+              </span>
             </div>
-            <div className="mt-2 h-2 overflow-hidden rounded-full bg-white/10">
-              <div
-                className="h-full rounded-full bg-gradient-to-r from-cyan-500 to-blue-500 transition-all"
-                style={{ width: `${confidencePct}%` }}
-              />
-            </div>
-            {result.confidence?.confidence_level && (
-              <p className="mt-2 text-xs text-slate-400">
-                Level: {result.confidence.confidence_level}
-              </p>
-            )}
             {result.confidence?.limiting_factor && (
-              <p className="mt-1 text-xs text-slate-500">
+              <p className="mt-2 text-xs text-slate-500">
                 Limited by {result.confidence.limiting_factor.replaceAll("_", " ")}
               </p>
             )}
@@ -202,27 +229,32 @@ export function AssessmentResultPanel({ result }: { result: AssessmentResult }) 
         </div>
       </div>
 
-      {result.weather && (
+      {weatherNotRelevant ? null : weatherMissing ? (
+        <div className="rounded-2xl border border-amber-500/25 bg-amber-500/10 p-4 text-sm text-amber-100">
+          Live weather is not available for this result
+          {result.weather?.status ? ` (${result.weather.status.replaceAll("_", " ")})` : ""}.
+        </div>
+      ) : (
         <div className="grid gap-3 sm:grid-cols-3">
           <div className="rounded-2xl border border-[var(--border)] bg-white/[0.03] p-4">
             <div className="mono-tag">Weather risk</div>
             <div className="mt-2 text-xl font-semibold capitalize">
-              {result.weather.level ?? "unknown"}
+              {result.weather?.level ?? "unknown"}
             </div>
-            {typeof result.weather.score === "number" && (
+            {typeof result.weather?.score === "number" && (
               <p className="mt-1 text-sm text-slate-400">Score {result.weather.score}</p>
             )}
           </div>
           <div className="rounded-2xl border border-[var(--border)] bg-white/[0.03] p-4">
             <div className="mono-tag">Conditions</div>
             <div className="mt-2 text-xl font-semibold capitalize">
-              {result.weather.condition ?? "-"}
+              {result.weather?.condition ?? "-"}
             </div>
           </div>
           <div className="rounded-2xl border border-[var(--border)] bg-white/[0.03] p-4">
             <div className="mono-tag">Temperature</div>
             <div className="mt-2 text-xl font-semibold">
-              {typeof result.weather.temp_c === "number" ? `${result.weather.temp_c}°C` : "-"}
+              {typeof result.weather?.temp_c === "number" ? `${result.weather.temp_c}°C` : "-"}
             </div>
           </div>
         </div>
@@ -272,7 +304,17 @@ export function AssessmentResultPanel({ result }: { result: AssessmentResult }) 
 
         {emergencyContacts.length > 0 && (
           <SectionCard title="Call these services" icon="☎" tone="default">
-            <ActionList items={emergencyContacts} marker="•" />
+            <ul className="space-y-2.5 text-sm leading-relaxed text-slate-300">
+              {emergencyContacts.map((item) => {
+                const match = item.match(/(\d{3,})/);
+                return (
+                  <li key={item} className="flex gap-3">
+                    <span className="mt-0.5 shrink-0 text-slate-500">•</span>
+                    {match ? <a className="underline" href={`tel:${match[1]}`}>{item}</a> : <span>{item}</span>}
+                  </li>
+                );
+              })}
+            </ul>
           </SectionCard>
         )}
       </div>
@@ -281,6 +323,12 @@ export function AssessmentResultPanel({ result }: { result: AssessmentResult }) 
         <SectionCard title="Things to carry" icon="🎒" tone="default">
           <ActionList items={thingsToCarry} marker="•" />
         </SectionCard>
+      )}
+
+      {hospitalSearchFailed && (
+        <div className="rounded-2xl border border-amber-500/25 bg-amber-500/10 p-4 text-sm text-amber-100">
+          Hospital search failed. Call 112 / 108 for dispatch.
+        </div>
       )}
 
       {result.hospitals && result.hospitals.length > 0 && (

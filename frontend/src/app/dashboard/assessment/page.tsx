@@ -1,167 +1,110 @@
 "use client";
 
-import { useCallback, useState } from "react";
+import { FormEvent, useCallback, useRef, useState } from "react";
 import { AssessmentResultPanel } from "@/components/AssessmentResultPanel";
+import { SosConfirmModal } from "@/components/SosConfirmModal";
+import { useUserLocation } from "@/hooks/useUserLocation";
 import { useVoiceInput } from "@/hooks/useVoiceInput";
 import { apiCall } from "@/lib/api";
-import type { AssessmentResult, SosResponse } from "@/lib/types";
-
-const presets: Record<string, { label: string; text: string; icon: string }> = {
-  flooding: {
-    label: "Flooding",
-    icon: "🌊",
-    text: "My house is flooding and water is rising fast.",
-  },
-  electrocution: {
-    label: "Electrocution",
-    icon: "⚡",
-    text: "There are live wires down near standing water.",
-  },
-  injury: {
-    label: "Injury",
-    icon: "🩹",
-    text: "Someone has a deep cut and is bleeding badly, needs medical help.",
-  },
-  snakebite: {
-    label: "Snakebite",
-    icon: "🐍",
-    text: "Someone has been bitten by a snake, urgent medical help needed.",
-  },
-  cyclone: {
-    label: "Cyclone",
-    icon: "🌀",
-    text: "Extreme cyclone winds and storm surge warning in our area.",
-  },
-  structural_damage: {
-    label: "Structural damage",
-    icon: "🏚️",
-    text: "Part of the building wall and roof has collapsed.",
-  },
-  accident: {
-    label: "Accident",
-    icon: "🚗",
-    text: "A road vehicle collision just occurred with injured passengers.",
-  },
-};
+import type { AssessmentResult } from "@/lib/types";
 
 export default function AssessmentPage() {
   const [text, setText] = useState("");
   const [language, setLanguage] = useState("English");
-  const [includeLocation, setIncludeLocation] = useState(false);
-  const [coords, setCoords] = useState<{ lat: number; lon: number } | null>(null);
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<AssessmentResult | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [sosStatus, setSosStatus] = useState("");
+  const [sosOpen, setSosOpen] = useState(false);
+  const { coords, status: locationStatus } = useUserLocation(true);
+  const loadingRef = useRef(false);
 
-  const appendVoiceText = useCallback((transcript: string) => {
-    setText((prev) => (prev ? `${prev} ${transcript}` : transcript));
-  }, []);
-  const voice = useVoiceInput(appendVoiceText, language);
+  const runAssessment = useCallback(
+    async (description: string) => {
+      const trimmed = description.trim();
+      if (!trimmed || loadingRef.current) return;
+      loadingRef.current = true;
+      setLoading(true);
+      setError(null);
+      setResult(null);
 
-  function toggleLocation() {
-    if (!includeLocation) {
-      if (!navigator.geolocation) return;
-      navigator.geolocation.getCurrentPosition(
-        (pos) => {
-          setCoords({ lat: pos.coords.latitude, lon: pos.coords.longitude });
-          setIncludeLocation(true);
-        },
-        () => setIncludeLocation(false),
-      );
-      return;
-    }
-    setIncludeLocation(false);
-    setCoords(null);
+      const payload: Record<string, unknown> = {
+        description: trimmed,
+        language,
+      };
+      if (coords) {
+        payload.lat = coords.lat;
+        payload.lon = coords.lon;
+      }
+
+      const res = await apiCall<AssessmentResult>("/api/assessment", {
+        method: "POST",
+        body: JSON.stringify(payload),
+      });
+
+      loadingRef.current = false;
+      setLoading(false);
+      if (!res.ok) {
+        setError(res.error);
+        return;
+      }
+      setResult(res.data);
+    },
+    [coords, language],
+  );
+
+  const onTranscript = useCallback(
+    (transcript: string) => {
+      setText((prev) => {
+        const next = prev.trim() ? `${prev.trim()} ${transcript}` : transcript;
+        void runAssessment(next);
+        return next;
+      });
+    },
+    [runAssessment],
+  );
+
+  const voice = useVoiceInput(onTranscript, language);
+
+  function onSubmit(event: FormEvent) {
+    event.preventDefault();
+    void runAssessment(text);
   }
 
-  async function submitAssessment() {
-    if (!text.trim()) return;
-    setLoading(true);
-    setError(null);
-    setResult(null);
-
-    const payload: Record<string, unknown> = {
-      description: text.trim(),
-      language,
-    };
-    if (includeLocation && coords) {
-      payload.lat = coords.lat;
-      payload.lon = coords.lon;
-    }
-
-    const res = await apiCall<AssessmentResult>("/api/assessment", {
-      method: "POST",
-      body: JSON.stringify(payload),
-    });
-
-    setLoading(false);
-    if (!res.ok) {
-      setError(res.error);
-      return;
-    }
-    setResult(res.data);
-  }
-
-  async function sendSos() {
-    setSosStatus("Getting your location...");
-    navigator.geolocation.getCurrentPosition(
-      async (pos) => {
-        const res = await apiCall<SosResponse>("/api/sos", {
-          method: "POST",
-          body: JSON.stringify({
-            lat: pos.coords.latitude,
-            lon: pos.coords.longitude,
-            situation: text || "Emergency reported from Get help",
-          }),
-        });
-        setSosStatus(res.ok ? res.data.message : `Could not send SOS. ${res.error}`);
-      },
-      () => setSosStatus("Location permission is required. Call 112 now if needed."),
-    );
-  }
+  const locationHint =
+    locationStatus === "granted" && coords
+      ? "Using your location for nearby hospitals and weather when they apply."
+      : locationStatus === "loading"
+        ? "Getting your location..."
+        : locationStatus === "denied"
+          ? "Location is off. You still get protocol steps. Call 112 if this is urgent."
+          : "Location will be used for hospitals and weather when the situation needs it.";
 
   return (
-    <div className="mx-auto max-w-4xl">
+    <div className="mx-auto max-w-3xl">
       <div className="rounded-3xl border border-red-500/20 bg-gradient-to-br from-red-500/10 via-transparent to-transparent p-6 sm:p-8">
         <p className="mono-tag text-red-200/80">Need help now</p>
         <h1 className="mt-2 text-3xl font-semibold text-white">Get help</h1>
         <p className="mt-3 max-w-2xl text-sm leading-relaxed text-slate-300">
-          Describe what is happening. You will get clear next steps, weather
-          risk if available, and nearby hospitals when you share your location.
-          Location is never shared unless you choose it.
+          Say or type what is happening. The backend classifies the situation,
+          fetches only the evidence that matters, and returns standard steps.
+          For a life-threatening emergency, call 112 first.
         </p>
       </div>
 
-      <div className="mt-8">
-        <div className="mono-tag mb-3">Common situations</div>
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          {Object.entries(presets).map(([key, preset]) => (
-            <button
-              key={key}
-              className="glass-card group px-4 py-4 text-left transition hover:border-blue-500/40 hover:bg-white/[0.04]"
-              onClick={() => setText(preset.text)}
-            >
-              <div className="flex items-start gap-3">
-                <span className="text-xl" aria-hidden>{preset.icon}</span>
-                <div>
-                  <div className="font-medium text-white">{preset.label}</div>
-                  <p className="mt-1 text-xs leading-relaxed text-slate-400">{preset.text}</p>
-                </div>
-              </div>
-            </button>
-          ))}
-        </div>
-      </div>
-
-      <div className="mt-8">
-        <div className="mono-tag mb-3">Your situation</div>
+      <form className="mt-8" onSubmit={onSubmit}>
         <div className="relative">
           <textarea
             value={text}
             onChange={(e) => setText(e.target.value)}
-            placeholder="Describe what is happening. You can type or use the microphone."
-            className="min-h-[140px] w-full rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-4 pr-16 text-sm text-white outline-none ring-0 transition focus:border-cyan-500/40"
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && !e.shiftKey) {
+                e.preventDefault();
+                void runAssessment(text);
+              }
+            }}
+            placeholder="What is happening? Speak or type, then go."
+            className="min-h-[160px] w-full rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-4 pr-16 text-sm text-white outline-none ring-0 transition focus:border-cyan-500/40"
+            disabled={loading}
           />
           {voice.supported && (
             <button
@@ -174,7 +117,7 @@ export default function AssessmentPage() {
                     : "border-[var(--border)] bg-white/5 text-slate-300 hover:border-cyan-500/40"
               }`}
               onClick={voice.toggle}
-              disabled={voice.transcribing}
+              disabled={voice.transcribing || loading}
               title="Record your voice"
             >
               {voice.transcribing ? "..." : voice.listening ? "●" : "🎤"}
@@ -183,42 +126,36 @@ export default function AssessmentPage() {
         </div>
 
         <div className="mt-2 flex flex-wrap items-center gap-3 text-xs text-slate-500">
-          {voice.listening && <span className="text-red-300">Recording. Tap again to stop.</span>}
+          {voice.listening && <span className="text-red-300">Recording. Tap again to stop — we will assess automatically.</span>}
           {voice.transcribing && <span className="text-cyan-300">Converting speech to text...</span>}
           {voice.error && <span className="text-amber-300">{voice.error}</span>}
-          {voice.supported && !voice.listening && !voice.transcribing && (
-            <span>Tap the microphone to speak instead of typing.</span>
+          {loading && <span className="text-cyan-200">Working on your situation...</span>}
+          {!voice.listening && !voice.transcribing && !loading && (
+            <span>Tap the microphone to speak, or press Enter to send.</span>
           )}
         </div>
-      </div>
 
-      <div className="mt-5 flex flex-wrap items-center gap-4">
-        <select
-          value={language}
-          onChange={(e) => setLanguage(e.target.value)}
-          className="rounded-xl border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-sm"
+        <div className="mt-5 flex flex-wrap items-center gap-4">
+          <select
+            value={language}
+            onChange={(e) => setLanguage(e.target.value)}
+            className="rounded-xl border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-sm"
+          >
+            <option>English</option>
+            <option>Telugu</option>
+            <option>Hindi</option>
+          </select>
+          <p className="max-w-md text-xs text-slate-500">{locationHint}</p>
+        </div>
+
+        <button
+          type="submit"
+          className="btn btn-primary mt-6 w-full sm:w-auto"
+          disabled={loading || !text.trim()}
         >
-          <option>English</option>
-          <option>Telugu</option>
-          <option>Hindi</option>
-        </select>
-        <label className="flex items-center gap-2 text-sm text-slate-300">
-          <input type="checkbox" checked={includeLocation} onChange={toggleLocation} />
-          Share location to find nearby hospitals
-        </label>
-      </div>
-
-      <button
-        className="btn btn-primary mt-6 w-full sm:w-auto"
-        onClick={submitAssessment}
-        disabled={loading || !text.trim()}
-      >
-        {loading ? "Working..." : "🚨 Get help now"}
-      </button>
-
-      <p className="mt-3 text-xs text-slate-500">
-        For general questions, use Chat above SOS. Stay on this page for urgent help.
-      </p>
+          {loading ? "Working..." : "Get help"}
+        </button>
+      </form>
 
       {(error || result) && (
         <div className="mt-10 space-y-6">
@@ -228,23 +165,19 @@ export default function AssessmentPage() {
             </div>
           )}
           {result && (
-            <>
-              <AssessmentResultPanel result={result} />
-              <div className="rounded-2xl border border-red-500/25 bg-red-500/5 p-5">
-                <p className="text-sm text-slate-300">
-                  If you need an alert sent right away, confirm SOS below. Your
-                  location is shared only when you confirm.
-                </p>
-                <button className="btn btn-danger mt-4 w-full" onClick={sendSos}>
-                  🚨 Send SOS alert
-                </button>
-                {sosStatus && <p className="mt-3 text-sm text-slate-300">{sosStatus}</p>}
-              </div>
-            </>
+            <AssessmentResultPanel
+              result={result}
+              onRequestSos={() => setSosOpen(true)}
+            />
           )}
         </div>
       )}
+
+      <SosConfirmModal
+        open={sosOpen}
+        onClose={() => setSosOpen(false)}
+        situation={text || result?.whats_happening || undefined}
+      />
     </div>
   );
 }
-
