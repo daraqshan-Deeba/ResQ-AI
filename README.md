@@ -5,7 +5,7 @@ An AI-powered emergency response and disaster management platform providing real
 # 🚨 ResQ AI — Emergency Response & Disaster Management Platform
 
 **Team Name:** Strom Hounds  
-🎥 **Demo Video:** [[https://drive.google.com/file/d/1xRJ9DnmIqLn2Rck8GiGpDLOCL-HOgRNR/view?usp=sharing]
+🎥 **Demo Video:** [Watch the ResQ AI Demo](https://drive.google.com/file/d/1xRJ9DnmIqLn2Rck8GiGpDLOCL-HOgRNR/view?usp=sharing)
 
 ResQ AI is an AI-powered emergency response and disaster management platform designed to help people make faster and safer decisions during emergencies and natural disasters.
 
